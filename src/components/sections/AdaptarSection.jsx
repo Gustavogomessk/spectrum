@@ -1,0 +1,353 @@
+import { useMemo, useState } from "react"
+import { useNeuroInclude } from "../../context/NeuroIncludeContext"
+import { adaptarMaterialCohere } from "../../services/cohere"
+import { extrairTextoPdf } from "../../services/pdfText"
+import { markdownParaHTML } from "../../utils/markdown"
+import { gerarFallbackAdaptacao } from "../../utils/fallbackAdaptacao"
+import { badgeDiag, corAvatar } from "../../utils/badges"
+import UploadZone from "../upload/UploadZone"
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+function formatarTamanho(bytes) {
+  if (bytes < 1024) return `${bytes} bytes`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+export default function AdaptarSection({ active }) {
+  const { alunos, toast, salvarMaterialApi } = useNeuroInclude()
+
+  const [arquivo, setArquivo] = useState(null)
+  const [selecionados, setSelecionados] = useState(() => new Set())
+  const [obs, setObs] = useState("")
+  const [tipoAdaptacao, setTipoAdaptacao] = useState("tdah")
+  const [progresso, setProgresso] = useState({ visivel: false, texto: "", pct: 0 })
+  const [resultado, setResultado] = useState({
+    visivel: false,
+    html: "",
+    sub: "",
+    nomeArquivo: "",
+    perfilLabel: "",
+  })
+  const [adaptando, setAdaptando] = useState(false)
+
+  const alunoPrincipal = useMemo(() => {
+    const id = [...selecionados][0]
+    return alunos.find((a) => String(a.id) === String(id))
+  }, [alunos, selecionados])
+
+  function processarArquivo(file) {
+    if (!file?.name?.toLowerCase().endsWith(".pdf")) {
+      toast("Por favor, envie apenas arquivos PDF.", "erro")
+      return
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast("Arquivo muito grande. Máximo 20MB.", "erro")
+      return
+    }
+    setArquivo(file)
+    toast("Arquivo carregado com sucesso!", "sucesso")
+  }
+
+  function removerArquivo() {
+    setArquivo(null)
+  }
+
+  function toggleAluno(id) {
+    setSelecionados((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function iniciarAdaptacao() {
+    if (!arquivo) {
+      toast("Selecione um PDF antes de continuar.", "erro")
+      return
+    }
+    if (selecionados.size === 0) {
+      toast("Selecione ao menos um aluno.", "erro")
+      return
+    }
+    const aluno = alunoPrincipal
+    if (!aluno) {
+      toast("Selecione um aluno.", "erro")
+      return
+    }
+
+    setAdaptando(true)
+    setResultado((r) => ({ ...r, visivel: false }))
+    setProgresso({ visivel: true, texto: "Lendo o conteúdo do PDF...", pct: 15 })
+
+    const etapas = [
+      { texto: "Analisando perfil do aluno...", pct: 35 },
+      { texto: "Aplicando estratégias pedagógicas...", pct: 55 },
+      { texto: "Chamando a IA (Cohere)...", pct: 75 },
+    ]
+
+    let textoFonte = ""
+    try {
+      textoFonte = await extrairTextoPdf(arquivo)
+      for (const e of etapas) {
+        setProgresso({ visivel: true, texto: e.texto, pct: e.pct })
+        await sleep(350)
+      }
+
+      const perfilAluno = `${aluno.nome}. Diagnóstico: ${aluno.diagnostico}. Observações: ${aluno.obs || "—"}`
+
+      let textoMd = ""
+      try {
+        textoMd = await adaptarMaterialCohere({
+          textoFonte: textoFonte || `Material: ${arquivo.name}`,
+          perfilAluno,
+          tipoAdaptacao,
+          observacoes: obs,
+        })
+      } catch (err) {
+        console.error(err)
+        textoMd = gerarFallbackAdaptacao({
+          nomeMaterial: arquivo.name.replace(/\.pdf$/i, ""),
+          aluno,
+          tipo: tipoAdaptacao,
+        })
+        toast("Usamos um modelo offline porque a IA não respondeu. Verifique a chave no .env.", "info")
+      }
+
+      setProgresso({ visivel: true, texto: "Concluído!", pct: 100 })
+      await sleep(300)
+
+      const html = markdownParaHTML(textoMd)
+      const nomeBase = arquivo.name
+      setResultado({
+        visivel: true,
+        html,
+        sub: `Adaptado para ${aluno.nome} • ${aluno.diagnostico} • ${new Date().toLocaleDateString("pt-BR")}`,
+        nomeArquivo: `${nomeBase} — Adaptado`,
+        perfilLabel: aluno.diagnostico,
+      })
+
+      const nomeSemExt = nomeBase.replace(/\.pdf$/i, "")
+      await salvarMaterialApi({
+        nome: nomeSemExt,
+        aluno: aluno.nome,
+        perfil: aluno.diagnostico,
+        conteudo_html: html,
+        aluno_id: /^[0-9a-f-]{36}$/i.test(String(aluno.id)) ? aluno.id : null,
+        pdf_original_nome: nomeBase,
+        pdf_adaptado_nome: `${nomeSemExt}-adaptado.pdf`,
+      })
+
+      toast("Material adaptado com sucesso! ✅", "sucesso")
+    } catch (e) {
+      console.error(e)
+      toast(e.message || "Erro na adaptação.", "erro")
+    } finally {
+      setProgresso((p) => ({ ...p, visivel: false }))
+      setAdaptando(false)
+    }
+  }
+
+  async function copiarConteudo() {
+    const el = document.getElementById("conteudo-adaptado")
+    const texto = el?.innerText || ""
+    try {
+      await navigator.clipboard.writeText(texto)
+      toast("Conteúdo copiado para a área de transferência!", "sucesso")
+    } catch {
+      toast("Selecione o texto manualmente para copiar.", "info")
+    }
+  }
+
+  function baixarPDF() {
+    toast("Exportação PDF completa pode ser feita no backend (wkhtmltopdf / print).", "info")
+  }
+
+  return (
+    <section className={`secao ${active ? "ativa" : ""}`} id="secao-adaptar" aria-label="Adaptação de material">
+      <div className="secao-corpo">
+        <h2 className="sr-only">Adaptar novo material</h2>
+
+        <div className="card mb-3" id="step-upload">
+          <div className="card-cabecalho">
+            <span style={{ fontSize: "1.2rem" }} aria-hidden="true">
+              📤
+            </span>
+            <span className="card-titulo">Passo 1 — Enviar PDF</span>
+            <span className="badge badge-azul">Obrigatório</span>
+          </div>
+          <div className="card-corpo">
+            {!arquivo ? (
+              <UploadZone onFile={processarArquivo} />
+            ) : null}
+
+            <div className={`arquivo-selecionado ${arquivo ? "visivel" : ""}`} aria-live="polite">
+              <div className="arquivo-icone" aria-hidden="true">
+                📄
+              </div>
+              <div className="arquivo-info">
+                <div className="arquivo-nome">{arquivo?.name || "—"}</div>
+                <div className="arquivo-tamanho">{arquivo ? formatarTamanho(arquivo.size) : "—"}</div>
+              </div>
+              <button type="button" className="btn btn-perigo btn-sm" onClick={removerArquivo} aria-label="Remover arquivo selecionado">
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="card mb-3" id="step-aluno">
+          <div className="card-cabecalho">
+            <span style={{ fontSize: "1.2rem" }} aria-hidden="true">
+              👤
+            </span>
+            <span className="card-titulo">Passo 2 — Selecionar Aluno(s)</span>
+          </div>
+          <div className="card-corpo">
+            <p className="texto-mudo mb-1">Selecione para quem este material será adaptado. O perfil do aluno personaliza a adaptação.</p>
+            <div className="alunos-grid" role="list" aria-label="Lista de alunos disponíveis">
+              {alunos.map((aluno) => {
+                const sel = selecionados.has(aluno.id)
+                return (
+                  <div
+                    key={aluno.id}
+                    className={`aluno-card ${sel ? "selecionado" : ""}`}
+                    role="listitem"
+                    tabIndex={0}
+                    aria-pressed={sel}
+                    aria-label={`${aluno.nome} — ${aluno.diagnostico}`}
+                    onClick={() => toggleAluno(aluno.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") toggleAluno(aluno.id)
+                    }}
+                  >
+                    <div className="check" aria-hidden="true">
+                      ✓
+                    </div>
+                    <div className={`avatar ${corAvatar(aluno.diagnostico)}`} aria-hidden="true">
+                      {aluno.nome
+                        .split(" ")
+                        .map((p) => p[0])
+                        .join("")
+                        .substring(0, 2)}
+                    </div>
+                    <div className="aluno-nome">{aluno.nome}</div>
+                    <div className="aluno-laudo">
+                      <span className={`badge ${badgeDiag(aluno.diagnostico)}`}>{aluno.diagnostico}</span>
+                      {aluno.laudo ? (
+                        <span>
+                          &nbsp;<span className="badge badge-verde">📋 Laudo</span>
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="card mb-3">
+          <div className="card-cabecalho">
+            <span style={{ fontSize: "1.2rem" }} aria-hidden="true">
+              📝
+            </span>
+            <span className="card-titulo">Passo 3 — Observações (opcional)</span>
+          </div>
+          <div className="card-corpo">
+            <label className="campo-label" htmlFor="obs-campo">
+              Instruções especiais para a IA
+            </label>
+            <textarea
+              id="obs-campo"
+              className="campo"
+              rows={3}
+              placeholder="Ex: Simplificar palavras difíceis, usar exemplos do cotidiano, evitar textos longos..."
+              aria-label="Observações para a adaptação"
+              value={obs}
+              onChange={(e) => setObs(e.target.value)}
+            />
+
+            <label className="campo-label" htmlFor="tipo-adaptacao">
+              Tipo de adaptação
+            </label>
+            <select
+              id="tipo-adaptacao"
+              className="campo"
+              aria-label="Selecione o tipo de adaptação"
+              value={tipoAdaptacao}
+              onChange={(e) => setTipoAdaptacao(e.target.value)}
+            >
+              <option value="tdah">TDAH — Foco em objetividade e listas</option>
+              <option value="tea">TEA Nível 1 — Linguagem literal e previsível</option>
+              <option value="ambos">Ambos — Combinação das estratégias</option>
+              <option value="geral">Simplificação Geral</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-sucesso btn-bloco btn-lg"
+          id="btn-adaptar"
+          disabled={adaptando}
+          onClick={iniciarAdaptacao}
+          aria-label="Iniciar adaptação com IA"
+        >
+          {adaptando ? "Adaptando..." : "✨ Adaptar com IA"}
+        </button>
+
+        <div className={`progresso-ia card mt-3 ${progresso.visivel ? "visivel" : ""}`} aria-live="polite" aria-label="Progresso da adaptação">
+          <div className="card-corpo">
+            <div className="progresso-etapa" id="etapa-texto">
+              <div className="spinner" aria-hidden="true" />
+              <span>{progresso.texto}</span>
+            </div>
+            <div className="progresso-barra-container" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progresso.pct}>
+              <div className="progresso-barra" id="progresso-barra" style={{ width: `${progresso.pct}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className={`resultado-wrapper mt-3 ${resultado.visivel ? "visivel" : ""}`} aria-live="polite">
+          <div className="resultado-cabecalho" role="status">
+            <div className="resultado-icone" aria-hidden="true">
+              ✅
+            </div>
+            <div>
+              <div className="resultado-titulo">Material adaptado com sucesso!</div>
+              <div className="resultado-sub" id="resultado-sub">
+                {resultado.sub}
+              </div>
+            </div>
+            <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
+              <button type="button" className="btn btn-sucesso btn-sm" onClick={baixarPDF} aria-label="Baixar PDF do material adaptado">
+                ⬇ Baixar PDF
+              </button>
+              <button type="button" className="btn btn-secundario btn-sm" onClick={copiarConteudo} aria-label="Copiar conteúdo adaptado">
+                📋 Copiar
+              </button>
+            </div>
+          </div>
+
+          <div className="material-adaptado">
+            <div className="material-cabecalho" aria-label="Controles do material">
+              <span>📄</span> <span id="nome-material-resultado">{resultado.nomeArquivo}</span>
+              <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
+                <span className="badge badge-azul" id="badge-perfil-resultado">
+                  {resultado.perfilLabel}
+                </span>
+                <span className="badge badge-verde">IA Validada</span>
+              </div>
+            </div>
+            <div className="material-conteudo" id="conteudo-adaptado" tabIndex={0} aria-label="Conteúdo do material adaptado" dangerouslySetInnerHTML={{ __html: resultado.html }} />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}

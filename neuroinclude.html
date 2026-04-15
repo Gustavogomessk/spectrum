@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroInclude — Materiais Adaptados com IA</title>
+<meta name="description" content="Plataforma de adaptação de materiais acadêmicos para crianças neurodivergentes usando inteligência artificial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* =========================================
+     DESIGN SYSTEM — NEUROINCLUDE
+     Cores suaves, tipografia amigável, layout
+     limpo para foco e acessibilidade.
+  ========================================= */
+  :root {
+    --cor-primaria: #5B8DEF;       /* Azul suave — ação principal */
+    --cor-primaria-escura: #3A6DD8;
+    --cor-primaria-clara: #EEF3FE;
+    --cor-secundaria: #7EC8A4;     /* Verde menta — sucesso */
+    --cor-secundaria-clara: #EDFAF4;
+    --cor-acento: #F5A623;         /* Âmbar — destaque */
+    --cor-acento-clara: #FEF6E7;
+    --cor-perigo: #E05C5C;
+    --cor-perigo-clara: #FEF0F0;
+    --cor-fundo: #F7F9FC;
+    --cor-superficie: #FFFFFF;
+    --cor-texto-principal: #1A2340;
+    --cor-texto-secundario: #5A6580;
+    --cor-texto-mudo: #9BA8BE;
+    --cor-borda: #E4EAF4;
+    --raio-sm: 8px;
+    --raio-md: 12px;
+    --raio-lg: 16px;
+    --raio-xl: 24px;
+    --raio-full: 9999px;
+    --sombra-sm: 0 2px 8px rgba(91,141,239,0.08);
+    --sombra-md: 0 4px 20px rgba(91,141,239,0.12);
+    --fonte-titulo: 'Nunito', sans-serif;
+    --fonte-corpo: 'Quicksand', sans-serif;
+    --transicao: 0.22s ease;
+  }
+
+  /* Reset */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--fonte-corpo);
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--cor-texto-principal);
+    background: var(--cor-fundo);
+    min-height: 100vh;
+  }
+
+  /* Acessibilidade — foco visível */
+  :focus-visible {
+    outline: 3px solid var(--cor-primaria);
+    outline-offset: 3px;
+    border-radius: var(--raio-sm);
+  }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+  }
+
+  /* Skip link — acessibilidade teclado */
+  .skip-link {
+    position: absolute; top: -50px; left: 1rem; z-index: 9999;
+    background: var(--cor-primaria); color: #fff; padding: 0.5rem 1rem;
+    border-radius: var(--raio-sm); font-weight: 700;
+    transition: top var(--transicao);
+  }
+  .skip-link:focus { top: 1rem; }
+
+  /* =========================================
+     TELAS (views)
+  ========================================= */
+  .tela { display: none; animation: fadeSlide 0.3s ease; }
+  .tela.ativa { display: block; }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* =========================================
+     TELA DE LOGIN
+  ========================================= */
+  #tela-login {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+  .login-hero {
+    background: linear-gradient(145deg, #5B8DEF 0%, #7EC8A4 100%);
+    padding: 3rem;
+    display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+    color: #fff; position: relative; overflow: hidden;
+  }
+  .login-hero::before {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 260px; height: 260px;
+    border-radius: 50%; background: rgba(255,255,255,0.08);
+  }
+  .login-hero::after {
+    content: '';
+    position: absolute; bottom: -80px; left: -40px;
+    width: 320px; height: 320px;
+    border-radius: 50%; background: rgba(255,255,255,0.06);
+  }
+  .login-logo {
+    font-family: var(--fonte-titulo); font-size: 2.2rem; font-weight: 800;
+    letter-spacing: -0.5px; margin-bottom: 0.25rem; position: relative; z-index: 1;
+  }
+  .login-logo span { opacity: 0.7; }
+  .login-tagline {
+    font-size: 1.05rem; opacity: 0.9; max-width: 320px;
+    line-height: 1.6; margin-bottom: 2.5rem; position: relative; z-index: 1;
+  }
+  .login-stat {
+    background: rgba(255,255,255,0.2); border-radius: var(--raio-md);
+    padding: 1rem 1.25rem; position: relative; z-index: 1;
+  }
+  .login-stat strong { font-size: 1.6rem; font-weight: 800; display: block; }
+  .login-stat span { font-size: 0.85rem; opacity: 0.85; }
+
+  .login-form-area {
+    background: #fff; padding: 3rem;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .login-titulo {
+    font-family: var(--fonte-titulo); font-size: 1.6rem; font-weight: 800;
+    color: var(--cor-texto-principal); margin-bottom: 0.4rem;
+  }
+  .login-sub {
+    font-size: 0.9rem; color: var(--cor-texto-secundario); margin-bottom: 2rem;
+  }
+
+  /* Tabs de perfil */
+  .perfil-tabs {
+    display: flex; gap: 0.5rem; margin-bottom: 1.5rem;
+    background: var(--cor-fundo); padding: 4px; border-radius: var(--raio-md);
+  }
+  .tab-btn {
+    flex: 1; padding: 0.5rem; border: none; border-radius: var(--raio-sm);
+    font-family: var(--fonte-corpo); font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; background: transparent;
+    color: var(--cor-texto-secundario); transition: all var(--transicao);
+  }
+  .tab-btn.ativo {
+    background: #fff; color: var(--cor-primaria);
+    box-shadow: var(--sombra-sm);
+  }
+
+  /* =========================================
+     COMPONENTES GERAIS
+  ========================================= */
+  label.campo-label {
+    display: block; font-size: 0.85rem; font-weight: 700;
+    color: var(--cor-texto-secundario); margin-bottom: 0.35rem;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .campo {
+    width: 100%; padding: 0.75rem 1rem;
+    border: 2px solid var(--cor-borda);
+    border-radius: var(--raio-md); font-family: var(--fonte-corpo);
+    font-size: 1rem; color: var(--cor-texto-principal);
+    background: #fff; transition: border-color var(--transicao);
+    margin-bottom: 1rem;
+  }
+  .campo:focus { border-color: var(--cor-primaria); outline: none; }
+  .campo::placeholder { color: var(--cor-texto-mudo); }
+
+  select.campo { appearance: none; cursor: pointer; }
+
+  /* Botões */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.5rem; padding: 0.75rem 1.5rem;
+    border: none; border-radius: var(--raio-full);
+    font-family: var(--fonte-corpo); font-size: 1rem; font-weight: 700;
+    cursor: pointer; transition: all var(--transicao); text-decoration: none;
+  }
+  .btn-primario {
+    background: var(--cor-primaria); color: #fff;
+    box-shadow: 0 4px 16px rgba(91,141,239,0.3);
+  }
+  .btn-primario:hover { background: var(--cor-primaria-escura); transform: translateY(-1px); }
+  .btn-primario:active { transform: translateY(0); }
+
+  .btn-secundario {
+    background: var(--cor-primaria-clara); color: var(--cor-primaria);
+  }
+  .btn-secundario:hover { background: #dce9fd; }
+
+  .btn-sucesso {
+    background: var(--cor-secundaria); color: #fff;
+    box-shadow: 0 4px 16px rgba(126,200,164,0.3);
+  }
+  .btn-sucesso:hover { background: #65b48e; transform: translateY(-1px); }
+
+  .btn-perigo {
+    background: var(--cor-perigo-clara); color: var(--cor-perigo);
+  }
+  .btn-perigo:hover { background: #fddcdc; }
+
+  .btn-sm { padding: 0.45rem 1rem; font-size: 0.85rem; }
+  .btn-lg { padding: 1rem 2rem; font-size: 1.05rem; }
+  .btn-bloco { width: 100%; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+  /* =========================================
+     LAYOUT DO APP (pós-login)
+  ========================================= */
+  #tela-app { display: none; min-height: 100vh; }
+  #tela-app.ativa { display: flex; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px; background: var(--cor-superficie);
+    border-right: 1px solid var(--cor-borda);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    transition: transform var(--transicao);
+  }
+  .sidebar-logo {
+    padding: 1.25rem 1.5rem;
+    font-family: var(--fonte-titulo); font-size: 1.4rem; font-weight: 800;
+    color: var(--cor-primaria); border-bottom: 1px solid var(--cor-borda);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .logo-icon {
+    width: 32px; height: 32px; background: var(--cor-primaria);
+    border-radius: var(--raio-sm); display: flex; align-items: center;
+    justify-content: center; font-size: 16px;
+  }
+  .sidebar-nav { flex: 1; padding: 1rem 0.75rem; overflow-y: auto; }
+  .nav-secao {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--cor-texto-mudo);
+    padding: 0.5rem 0.75rem; margin-top: 1rem;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.7rem 0.75rem; border-radius: var(--raio-md);
+    color: var(--cor-texto-secundario); font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; transition: all var(--transicao); margin-bottom: 2px;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--cor-primaria-clara); color: var(--cor-primaria); }
+  .nav-item.ativo { background: var(--cor-primaria-clara); color: var(--cor-primaria); font-weight: 700; }
+  .nav-item .nav-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
+  .nav-badge {
+    margin-left: auto; background: var(--cor-primaria); color: #fff;
+    font-size: 0.7rem; font-weight: 700; padding: 2px 7px;
+    border-radius: var(--raio-full); min-width: 20px; text-align: center;
+  }
+
+  .sidebar-footer {
+    padding: 1rem 0.75rem; border-top: 1px solid var(--cor-borda);
+  }
+  .perfil-card {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem; border-radius: var(--raio-md);
+    background: var(--cor-fundo); cursor: pointer;
+    transition: background var(--transicao);
+  }
+  .perfil-card:hover { background: var(--cor-primaria-clara); }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--cor-primaria); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.85rem; font-family: var(--fonte-titulo);
+    flex-shrink: 0;
+  }
+  .avatar.verde { background: var(--cor-secundaria); }
+  .avatar.ambar { background: var(--cor-acento); }
+  .perfil-info { flex: 1; min-width: 0; }
+  .perfil-nome { font-weight: 700; font-size: 0.85rem; truncate: ellipsis; }
+  .perfil-papel {
+    font-size: 0.75rem; color: var(--cor-texto-secundario);
+  }
+
+  /* Conteúdo principal */
+  .conteudo-principal {
+    margin-left: 240px; flex: 1; overflow-y: auto;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(247,249,252,0.9); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem;
+  }
+  .topbar-titulo {
+    font-family: var(--fonte-titulo); font-size: 1.2rem; font-weight: 800;
+    color: var(--cor-texto-principal); flex: 1;
+  }
+  .topbar-acoes { display: flex; gap: 0.5rem; align-items: center; }
+
+  /* Botão hamburguer (mobile) */
+  .btn-menu {
+    display: none; background: none; border: none;
+    font-size: 1.4rem; cursor: pointer; padding: 0.4rem;
+    color: var(--cor-texto-principal);
+  }
+
+  /* =========================================
+     SECOES DO APP
+  ========================================= */
+  .secao { display: none; }
+  .secao.ativa { display: block; animation: fadeSlide 0.25s ease; }
+  .secao-corpo { padding: 2rem; max-width: 1100px; }
+
+  /* Cards de métricas */
+  .metricas-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .metrica-card {
+    background: var(--cor-superficie); border-radius: var(--raio-lg);
+    padding: 1.25rem 1.5rem; border: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra-sm);
+  }
+  .metrica-label {
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--cor-texto-mudo); margin-bottom: 0.4rem;
+  }
+  .metrica-valor {
+    font-family: var(--fonte-titulo); font-size: 2rem; font-weight: 800;
+    color: var(--cor-texto-principal); line-height: 1;
+  }
+  .metrica-sub { font-size: 0.8rem; color: var(--cor-texto-secundario); margin-top: 0.3rem; }
+  .metrica-icone { font-size: 1.5rem; margin-bottom: 0.5rem; }
+
+  /* Card padrão */
+  .card {
+    background: var(--cor-superficie); border-radius: var(--raio-lg);
+    border: 1px solid var(--cor-borda); box-shadow: var(--sombra-sm);
+    overflow: hidden;
+  }
+  .card-cabecalho {
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--cor-borda);
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .card-titulo {
+    font-family: var(--fonte-titulo); font-size: 1rem; font-weight: 800;
+    flex: 1;
+  }
+  .card-corpo { padding: 1.5rem; }
+
+  /* Tags / badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: var(--raio-full);
+    font-size: 0.75rem; font-weight: 700;
+  }
+  .badge-azul { background: var(--cor-primaria-clara); color: var(--cor-primaria); }
+  .badge-verde { background: var(--cor-secundaria-clara); color: #2d8f63; }
+  .badge-ambar { background: var(--cor-acento-clara); color: #a36b10; }
+  .badge-perigo { background: var(--cor-perigo-clara); color: var(--cor-perigo); }
+  .badge-cinza { background: #f0f2f7; color: var(--cor-texto-secundario); }
+
+  /* =========================================
+     UPLOAD DE MATERIAL — ZONA DE ARRASTO
+  ========================================= */
+  .zona-upload {
+    border: 2px dashed var(--cor-borda); border-radius: var(--raio-xl);
+    padding: 3rem 2rem; text-align: center;
+    transition: all var(--transicao); cursor: pointer;
+    background: var(--cor-fundo);
+  }
+  .zona-upload:hover, .zona-upload.arrastando {
+    border-color: var(--cor-primaria); background: var(--cor-primaria-clara);
+  }
+  .zona-upload.arrastando { transform: scale(1.01); }
+  .upload-icone { font-size: 3rem; margin-bottom: 1rem; }
+  .upload-titulo {
+    font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 800;
+    margin-bottom: 0.35rem;
+  }
+  .upload-sub { font-size: 0.88rem; color: var(--cor-texto-secundario); }
+  .upload-formatos {
+    margin-top: 1rem; font-size: 0.8rem;
+    color: var(--cor-texto-mudo);
+  }
+  #input-arquivo { display: none; }
+
+  /* Arquivo selecionado */
+  .arquivo-selecionado {
+    display: none; align-items: center; gap: 1rem;
+    padding: 1rem 1.25rem; background: var(--cor-primaria-clara);
+    border: 2px solid var(--cor-primaria); border-radius: var(--raio-lg);
+    margin-top: 1rem;
+  }
+  .arquivo-selecionado.visivel { display: flex; }
+  .arquivo-icone { font-size: 2rem; flex-shrink: 0; }
+  .arquivo-info { flex: 1; }
+  .arquivo-nome { font-weight: 700; font-size: 0.9rem; word-break: break-all; }
+  .arquivo-tamanho { font-size: 0.8rem; color: var(--cor-texto-secundario); }
+
+  /* =========================================
+     SELEÇÃO DE ALUNOS
+  ========================================= */
+  .alunos-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem; margin-top: 1rem;
+  }
+  .aluno-card {
+    padding: 1rem; border: 2px solid var(--cor-borda);
+    border-radius: var(--raio-md); cursor: pointer;
+    transition: all var(--transicao); background: var(--cor-superficie);
+    text-align: center; position: relative;
+  }
+  .aluno-card:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-clara); }
+  .aluno-card.selecionado {
+    border-color: var(--cor-primaria); background: var(--cor-primaria-clara);
+  }
+  .aluno-card .check {
+    position: absolute; top: 8px; right: 8px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--cor-primaria); color: #fff;
+    display: none; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 900;
+  }
+  .aluno-card.selecionado .check { display: flex; }
+  .aluno-nome { font-weight: 700; font-size: 0.9rem; margin-top: 0.5rem; }
+  .aluno-laudo { font-size: 0.75rem; color: var(--cor-texto-secundario); }
+
+  /* =========================================
+     BARRA DE PROGRESSO DA IA
+  ========================================= */
+  .progresso-ia { display: none; }
+  .progresso-ia.visivel { display: block; }
+  .progresso-barra-container {
+    background: var(--cor-borda); border-radius: var(--raio-full);
+    height: 8px; margin: 0.75rem 0; overflow: hidden;
+  }
+  .progresso-barra {
+    height: 100%; background: linear-gradient(90deg, var(--cor-primaria), var(--cor-secundaria));
+    border-radius: var(--raio-full); transition: width 0.5s ease;
+    width: 0%;
+  }
+  .progresso-etapa {
+    font-size: 0.85rem; color: var(--cor-texto-secundario);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria); border-radius: 50%;
+    animation: girar 0.8s linear infinite; flex-shrink: 0;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  /* =========================================
+     RESULTADO DA ADAPTAÇÃO
+  ========================================= */
+  .resultado-wrapper { display: none; }
+  .resultado-wrapper.visivel { display: block; }
+  .resultado-cabecalho {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;
+    background: var(--cor-secundaria-clara); border-radius: var(--raio-lg);
+    border: 1px solid #b8e8d4;
+  }
+  .resultado-icone { font-size: 2rem; }
+  .resultado-titulo { font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 800; color: #2d8f63; }
+  .resultado-sub { font-size: 0.85rem; color: var(--cor-texto-secundario); }
+
+  .material-adaptado {
+    background: var(--cor-superficie); border-radius: var(--raio-lg);
+    border: 1px solid var(--cor-borda); overflow: hidden;
+  }
+  .material-cabecalho {
+    padding: 1rem 1.5rem; background: var(--cor-fundo);
+    border-bottom: 1px solid var(--cor-borda);
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.8rem; color: var(--cor-texto-secundario);
+  }
+  .material-conteudo {
+    padding: 1.5rem 2rem; line-height: 1.9;
+    font-size: 1rem; color: var(--cor-texto-principal);
+  }
+  .material-conteudo h2 {
+    font-family: var(--fonte-titulo); font-size: 1.2rem; font-weight: 800;
+    color: var(--cor-primaria); margin: 1.5rem 0 0.75rem;
+    padding-left: 0.75rem; border-left: 4px solid var(--cor-primaria);
+  }
+  .material-conteudo ul {
+    list-style: none; padding: 0; margin: 0.75rem 0;
+  }
+  .material-conteudo ul li {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    padding: 0.5rem 0.75rem; background: var(--cor-fundo);
+    border-radius: var(--raio-sm); margin-bottom: 0.5rem;
+  }
+  .material-conteudo ul li::before {
+    content: '✦'; color: var(--cor-primaria); flex-shrink: 0;
+    font-size: 0.7rem; margin-top: 0.4rem;
+  }
+  .destaque-box {
+    background: var(--cor-acento-clara); border-radius: var(--raio-md);
+    padding: 1rem 1.25rem; margin: 1rem 0;
+    border-left: 4px solid var(--cor-acento);
+  }
+  .destaque-box strong { color: #a36b10; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem; }
+
+  /* =========================================
+     LISTA DE ALUNOS (gestão)
+  ========================================= */
+  .tabela-wrapper { overflow-x: auto; }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.9rem;
+  }
+  th {
+    text-align: left; font-size: 0.75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--cor-texto-mudo); padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--cor-borda); background: var(--cor-fundo);
+  }
+  td {
+    padding: 0.9rem 1rem; border-bottom: 1px solid var(--cor-borda);
+    color: var(--cor-texto-principal);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--cor-fundo); }
+  .acoes-td { display: flex; gap: 0.5rem; }
+
+  /* =========================================
+     MODAL
+  ========================================= */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(26,35,64,0.45); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; padding: 1rem;
+  }
+  .modal-overlay.aberto { display: flex; }
+  .modal {
+    background: #fff; border-radius: var(--raio-xl);
+    width: 100%; max-width: 520px; max-height: 90vh;
+    overflow-y: auto; box-shadow: 0 20px 60px rgba(26,35,64,0.2);
+    animation: fadeSlide 0.25s ease;
+  }
+  .modal-cabecalho {
+    padding: 1.5rem; border-bottom: 1px solid var(--cor-borda);
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .modal-titulo { font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 800; flex: 1; }
+  .modal-fechar {
+    background: none; border: none; font-size: 1.4rem; cursor: pointer;
+    color: var(--cor-texto-mudo); padding: 0.25rem;
+    transition: color var(--transicao); line-height: 1;
+  }
+  .modal-fechar:hover { color: var(--cor-perigo); }
+  .modal-corpo { padding: 1.5rem; }
+  .modal-rodape { padding: 1rem 1.5rem; border-top: 1px solid var(--cor-borda); display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+  /* =========================================
+     CHATBOT
+  ========================================= */
+  .chat-container {
+    display: flex; flex-direction: column;
+    height: calc(100vh - 65px); max-height: 750px;
+  }
+  .chat-mensagens {
+    flex: 1; overflow-y: auto; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .mensagem {
+    display: flex; gap: 0.75rem; max-width: 80%;
+    animation: fadeSlide 0.2s ease;
+  }
+  .mensagem.usuario { align-self: flex-end; flex-direction: row-reverse; }
+  .mensagem-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    flex-shrink: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 14px; font-weight: 800;
+    font-family: var(--fonte-titulo);
+  }
+  .mensagem-avatar.ia { background: var(--cor-primaria); color: #fff; }
+  .mensagem-avatar.usr { background: var(--cor-acento); color: #fff; }
+  .mensagem-balao {
+    padding: 0.75rem 1rem; border-radius: var(--raio-lg);
+    font-size: 0.9rem; line-height: 1.65;
+  }
+  .mensagem.ia .mensagem-balao {
+    background: var(--cor-superficie); border: 1px solid var(--cor-borda);
+    border-radius: 4px var(--raio-lg) var(--raio-lg) var(--raio-lg);
+  }
+  .mensagem.usuario .mensagem-balao {
+    background: var(--cor-primaria); color: #fff;
+    border-radius: var(--raio-lg) 4px var(--raio-lg) var(--raio-lg);
+  }
+  .chat-input-area {
+    padding: 1rem 1.5rem; border-top: 1px solid var(--cor-borda);
+    display: flex; gap: 0.75rem; align-items: flex-end;
+  }
+  .chat-input {
+    flex: 1; border: 2px solid var(--cor-borda); border-radius: var(--raio-lg);
+    padding: 0.75rem 1rem; font-family: var(--fonte-corpo); font-size: 0.9rem;
+    resize: none; min-height: 44px; max-height: 120px;
+    transition: border-color var(--transicao); color: var(--cor-texto-principal);
+  }
+  .chat-input:focus { border-color: var(--cor-primaria); outline: none; }
+  .chat-enviar {
+    background: var(--cor-primaria); color: #fff; border: none;
+    border-radius: var(--raio-md); padding: 0.75rem;
+    cursor: pointer; font-size: 1.2rem; transition: all var(--transicao);
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  }
+  .chat-enviar:hover { background: var(--cor-primaria-escura); transform: scale(1.05); }
+
+  /* Digitando... */
+  .digitando { display: flex; align-items: center; gap: 4px; padding: 0.3rem 0; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cor-texto-mudo); animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* Sugestões do chat */
+  .sugestoes-chat { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0 1.5rem 1rem; }
+  .sugestao-btn {
+    background: var(--cor-primaria-clara); color: var(--cor-primaria);
+    border: none; border-radius: var(--raio-full); padding: 0.4rem 0.9rem;
+    font-family: var(--fonte-corpo); font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all var(--transicao);
+  }
+  .sugestao-btn:hover { background: var(--cor-primaria); color: #fff; }
+
+  /* =========================================
+     NOTIFICAÇÕES TOAST
+  ========================================= */
+  .toast-container {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .toast {
+    background: var(--cor-texto-principal); color: #fff;
+    padding: 0.75rem 1.25rem; border-radius: var(--raio-md);
+    font-size: 0.88rem; font-weight: 600; max-width: 320px;
+    display: flex; align-items: center; gap: 0.75rem;
+    animation: fadeSlide 0.25s ease;
+    box-shadow: 0 4px 20px rgba(26,35,64,0.2);
+  }
+  .toast.sucesso { background: #1e7a52; }
+  .toast.erro { background: var(--cor-perigo); }
+  .toast.info { background: var(--cor-primaria); }
+
+  /* =========================================
+     EMPTY STATES
+  ========================================= */
+  .estado-vazio {
+    text-align: center; padding: 3rem 2rem;
+    color: var(--cor-texto-secundario);
+  }
+  .estado-vazio-icone { font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.5; }
+  .estado-vazio-titulo { font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--cor-texto-principal); }
+  .estado-vazio-sub { font-size: 0.88rem; }
+
+  /* =========================================
+     RESPONSIVIDADE
+  ========================================= */
+  @media (max-width: 768px) {
+    /* Login */
+    #tela-login { grid-template-columns: 1fr; }
+    .login-hero { display: none; }
+    .login-form-area { padding: 2rem 1.5rem; }
+
+    /* Sidebar */
+    .sidebar {
+      transform: translateX(-100%);
+      box-shadow: var(--sombra-md);
+    }
+    .sidebar.aberta { transform: translateX(0); }
+    .conteudo-principal { margin-left: 0; }
+    .btn-menu { display: flex; }
+    .overlay-mobile {
+      display: none; position: fixed; inset: 0; z-index: 99;
+      background: rgba(26,35,64,0.4);
+    }
+    .overlay-mobile.visivel { display: block; }
+
+    /* Grid e seções */
+    .secao-corpo { padding: 1.25rem; }
+    .metricas-grid { grid-template-columns: repeat(2, 1fr); }
+    .alunos-grid { grid-template-columns: repeat(2, 1fr); }
+    .chat-container { height: calc(100vh - 65px - 70px); }
+    .modal { max-width: 100%; border-radius: var(--raio-lg) var(--raio-lg) 0 0; align-self: flex-end; }
+    .modal-overlay { align-items: flex-end; padding: 0; }
+  }
+
+  @media (max-width: 480px) {
+    .metricas-grid { grid-template-columns: 1fr 1fr; }
+    .alunos-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* =========================================
+     HELPERS
+  ========================================= */
+  .flex { display: flex; }
+  .flex-center { display: flex; align-items: center; }
+  .gap-sm { gap: 0.5rem; }
+  .gap-md { gap: 1rem; }
+  .mt-1 { margin-top: 0.5rem; }
+  .mt-2 { margin-top: 1rem; }
+  .mt-3 { margin-top: 1.5rem; }
+  .mb-1 { margin-bottom: 0.5rem; }
+  .mb-2 { margin-bottom: 1rem; }
+  .mb-3 { margin-bottom: 1.5rem; }
+  .texto-mudo { color: var(--cor-texto-secundario); font-size: 0.88rem; }
+  .divisor { height: 1px; background: var(--cor-borda); margin: 1.5rem 0; }
+
+  /* Linha de campo com dois inputs */
+  .linha-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 480px) { .linha-campos { grid-template-columns: 1fr; } }
+
+  /* =========================================
+     ANIMAÇÃO DE ENTRADA DO LOGO
+  ========================================= */
+  .logo-animado {
+    animation: pulso 2.5s ease-in-out infinite;
+  }
+  @keyframes pulso {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Skip link acessibilidade -->
+<a href="#conteudo-principal" class="skip-link">Ir para o conteúdo principal</a>
+
+<!-- Overlay mobile para fechar sidebar -->
+<div class="overlay-mobile" id="overlay-mobile" onclick="fecharSidebar()" role="presentation"></div>
+
+<!-- ==========================================
+     TELA 1: LOGIN
+========================================== -->
+<div id="tela-login" class="tela ativa" role="main" aria-label="Tela de login">
+  <div class="login-hero" role="img" aria-label="Ilustração decorativa NeuroInclude">
+    <div class="login-logo logo-animado">🧠 Neuro<span>Include</span></div>
+    <p class="login-tagline">IA que adapta materiais acadêmicos para crianças neurodivergentes em segundos.</p>
+    <div class="login-stat" aria-label="O que antes levava 2 horas, agora leva segundos">
+      <strong>2h → 30s</strong>
+      <span>Tempo médio de adaptação</span>
+    </div>
+  </div>
+
+  <div class="login-form-area">
+    <h1 class="login-titulo">Bem-vindo de volta 👋</h1>
+    <p class="login-sub">Acesse com seu perfil para continuar</p>
+
+    <div class="perfil-tabs" role="tablist" aria-label="Tipo de perfil">
+      <button class="tab-btn ativo" role="tab" aria-selected="true" onclick="selecionarTab(this, 'professor')">Professor</button>
+      <button class="tab-btn" role="tab" aria-selected="false" onclick="selecionarTab(this, 'psico')">Psicopedagogo</button>
+      <button class="tab-btn" role="tab" aria-selected="false" onclick="selecionarTab(this, 'secretaria')">Secretaria</button>
+    </div>
+
+    <form onsubmit="fazerLogin(event)" novalidate>
+      <label class="campo-label" for="email">E-mail institucional</label>
+      <input id="email" type="email" class="campo" placeholder="professor@escola.edu.br" autocomplete="email" required aria-required="true">
+
+      <label class="campo-label" for="senha">Senha</label>
+      <input id="senha" type="password" class="campo" placeholder="••••••••" autocomplete="current-password" required aria-required="true">
+
+      <button type="submit" class="btn btn-primario btn-bloco btn-lg" id="btn-login">
+        <span>Entrar na plataforma</span>
+      </button>
+    </form>
+
+    <p class="texto-mudo mt-2" style="text-align:center">
+      Primeiro acesso? <a href="#" onclick="abrirModal('modal-cadastro'); return false;" style="color:var(--cor-primaria); font-weight:700;">Cadastre-se</a>
+    </p>
+  </div>
+</div>
+
+<!-- ==========================================
+     TELA 2: APP PRINCIPAL
+========================================== -->
+<div id="tela-app" class="tela" role="application" aria-label="Plataforma NeuroInclude">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar" role="navigation" aria-label="Menu principal">
+    <div class="sidebar-logo" aria-label="NeuroInclude logo">
+      <div class="logo-icon" aria-hidden="true">🧠</div>
+      NeuroInclude
+    </div>
+
+    <div class="sidebar-nav">
+      <button class="nav-item ativo" onclick="mostrarSecao('dashboard')" aria-current="page" aria-label="Dashboard">
+        <span class="nav-icon" aria-hidden="true">🏠</span> Dashboard
+      </button>
+
+      <p class="nav-secao">Adaptação</p>
+      <button class="nav-item" onclick="mostrarSecao('adaptar')" aria-label="Adaptar material">
+        <span class="nav-icon" aria-hidden="true">✨</span> Adaptar Material
+        <span class="nav-badge" aria-label="Novo">Novo</span>
+      </button>
+      <button class="nav-item" onclick="mostrarSecao('historico')" aria-label="Materiais adaptados">
+        <span class="nav-icon" aria-hidden="true">📄</span> Materiais
+      </button>
+
+      <p class="nav-secao">Gestão</p>
+      <button class="nav-item" onclick="mostrarSecao('alunos')" aria-label="Alunos cadastrados">
+        <span class="nav-icon" aria-hidden="true">👥</span> Alunos
+      </button>
+      <button class="nav-item" onclick="mostrarSecao('chatbot')" aria-label="Chatbot educacional">
+        <span class="nav-icon" aria-hidden="true">💬</span> Chatbot IA
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="perfil-card" onclick="mostrarSecao('perfil')" role="button" tabindex="0" aria-label="Meu perfil">
+        <div class="avatar" id="sidebar-avatar" aria-hidden="true">PR</div>
+        <div class="perfil-info">
+          <div class="perfil-nome" id="sidebar-nome">Prof. Ana Lima</div>
+          <div class="perfil-papel" id="sidebar-papel">Professora</div>
+        </div>
+        <span aria-hidden="true" style="font-size:0.9rem; color:var(--cor-texto-mudo)">⚙️</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="conteudo-principal" id="conteudo-principal" tabindex="-1">
+    <div class="topbar">
+      <button class="btn-menu" id="btn-menu" onclick="abrirSidebar()" aria-label="Abrir menu" aria-expanded="false">☰</button>
+      <h1 class="topbar-titulo" id="topbar-titulo" aria-live="polite">Dashboard</h1>
+      <div class="topbar-acoes">
+        <button class="btn btn-primario btn-sm" onclick="mostrarSecao('adaptar')" aria-label="Adaptar novo material">
+          ✨ Novo Material
+        </button>
+      </div>
+    </div>
+
+    <!-- ======== SEÇÃO: DASHBOARD ======== -->
+    <section class="secao ativa" id="secao-dashboard" aria-label="Painel de controle">
+      <div class="secao-corpo">
+        <h2 class="sr-only">Resumo de atividades</h2>
+
+        <div class="metricas-grid" role="list" aria-label="Métricas da plataforma">
+          <div class="metrica-card" role="listitem">
+            <div class="metrica-icone" aria-hidden="true">📄</div>
+            <div class="metrica-label">Materiais Adaptados</div>
+            <div class="metrica-valor" id="m-materiais">12</div>
+            <div class="metrica-sub">+3 esta semana</div>
+          </div>
+          <div class="metrica-card" role="listitem">
+            <div class="metrica-icone" aria-hidden="true">👥</div>
+            <div class="metrica-label">Alunos Ativos</div>
+            <div class="metrica-valor" id="m-alunos">8</div>
+            <div class="metrica-sub">Com laudo cadastrado</div>
+          </div>
+          <div class="metrica-card" role="listitem">
+            <div class="metrica-icone" aria-hidden="true">⏱️</div>
+            <div class="metrica-label">Tempo Economizado</div>
+            <div class="metrica-valor">24h</div>
+            <div class="metrica-sub">Comparado ao manual</div>
+          </div>
+          <div class="metrica-card" role="listitem">
+            <div class="metrica-icone" aria-hidden="true">🤖</div>
+            <div class="metrica-label">Precisão da IA</div>
+            <div class="metrica-valor">94%</div>
+            <div class="metrica-sub">Avaliado por pedagogos</div>
+          </div>
+        </div>
+
+        <!-- Atividade recente -->
+        <div class="card mb-3">
+          <div class="card-cabecalho">
+            <span class="card-titulo">Atividade Recente</span>
+            <button class="btn btn-secundario btn-sm" onclick="mostrarSecao('historico')">Ver tudo</button>
+          </div>
+          <div class="tabela-wrapper">
+            <table aria-label="Últimas adaptações realizadas">
+              <thead>
+                <tr>
+                  <th scope="col">Material</th>
+                  <th scope="col">Aluno</th>
+                  <th scope="col">Perfil</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-recente">
+                <tr>
+                  <td>Frações — Cap. 3</td>
+                  <td>Lucas M.</td>
+                  <td><span class="badge badge-azul">TDAH</span></td>
+                  <td>14/04/2025</td>
+                  <td><span class="badge badge-verde">✓ Pronto</span></td>
+                </tr>
+                <tr>
+                  <td>Texto: A Floresta</td>
+                  <td>Ana B.</td>
+                  <td><span class="badge badge-ambar">TEA n.1</span></td>
+                  <td>13/04/2025</td>
+                  <td><span class="badge badge-verde">✓ Pronto</span></td>
+                </tr>
+                <tr>
+                  <td>Ciências — Ecosistemas</td>
+                  <td>Pedro S.</td>
+                  <td><span class="badge badge-azul">TDAH</span></td>
+                  <td>12/04/2025</td>
+                  <td><span class="badge badge-verde">✓ Pronto</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Início rápido -->
+        <div class="card">
+          <div class="card-cabecalho">
+            <span class="card-titulo">Começar Agora</span>
+          </div>
+          <div class="card-corpo">
+            <p class="texto-mudo mb-2">Adapte um novo material em 3 passos simples:</p>
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+              <div style="flex:1; min-width:160px; text-align:center; padding:1.25rem; background:var(--cor-fundo); border-radius:var(--raio-md);">
+                <div style="font-size:2rem; margin-bottom:0.5rem;" aria-hidden="true">📤</div>
+                <div style="font-weight:700; font-size:0.9rem;">1. Envie o PDF</div>
+                <div class="texto-mudo" style="font-size:0.8rem;">Arraste ou selecione</div>
+              </div>
+              <div style="flex:1; min-width:160px; text-align:center; padding:1.25rem; background:var(--cor-fundo); border-radius:var(--raio-md);">
+                <div style="font-size:2rem; margin-bottom:0.5rem;" aria-hidden="true">👤</div>
+                <div style="font-weight:700; font-size:0.9rem;">2. Escolha o aluno</div>
+                <div class="texto-mudo" style="font-size:0.8rem;">Perfil personalizado</div>
+              </div>
+              <div style="flex:1; min-width:160px; text-align:center; padding:1.25rem; background:var(--cor-fundo); border-radius:var(--raio-md);">
+                <div style="font-size:2rem; margin-bottom:0.5rem;" aria-hidden="true">✨</div>
+                <div style="font-weight:700; font-size:0.9rem;">3. IA adapta</div>
+                <div class="texto-mudo" style="font-size:0.8rem;">Em segundos</div>
+              </div>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-primario" onclick="mostrarSecao('adaptar')">✨ Adaptar Material Agora</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== SEÇÃO: ADAPTAR MATERIAL ======== -->
+    <section class="secao" id="secao-adaptar" aria-label="Adaptação de material">
+      <div class="secao-corpo">
+        <h2 class="sr-only">Adaptar novo material</h2>
+
+        <!-- Passo 1: Upload -->
+        <div class="card mb-3" id="step-upload">
+          <div class="card-cabecalho">
+            <span style="font-size:1.2rem;" aria-hidden="true">📤</span>
+            <span class="card-titulo">Passo 1 — Enviar PDF</span>
+            <span class="badge badge-azul">Obrigatório</span>
+          </div>
+          <div class="card-corpo">
+            <div class="zona-upload"
+              id="zona-upload"
+              role="button"
+              tabindex="0"
+              aria-label="Área de upload. Clique ou arraste um arquivo PDF"
+              onclick="document.getElementById('input-arquivo').click()"
+              onkeydown="if(event.key==='Enter'||event.key===' '){document.getElementById('input-arquivo').click()}"
+              ondragover="arrastarSobre(event)"
+              ondragleave="arrastarSair(event)"
+              ondrop="soltarArquivo(event)">
+              <div class="upload-icone" aria-hidden="true">📁</div>
+              <div class="upload-titulo">Arraste o PDF aqui ou clique para selecionar</div>
+              <div class="upload-sub">O arquivo será lido pela IA para adaptação</div>
+              <div class="upload-formatos">Formatos aceitos: PDF (máx. 20MB)</div>
+            </div>
+            <input type="file" id="input-arquivo" accept=".pdf" onchange="arquivoSelecionado(event)" aria-label="Selecionar arquivo PDF">
+
+            <div class="arquivo-selecionado" id="arquivo-selecionado" aria-live="polite">
+              <div class="arquivo-icone" aria-hidden="true">📄</div>
+              <div class="arquivo-info">
+                <div class="arquivo-nome" id="arquivo-nome">—</div>
+                <div class="arquivo-tamanho" id="arquivo-tamanho">—</div>
+              </div>
+              <button class="btn btn-perigo btn-sm" onclick="removerArquivo()" aria-label="Remover arquivo selecionado">Remover</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Passo 2: Selecionar aluno -->
+        <div class="card mb-3" id="step-aluno">
+          <div class="card-cabecalho">
+            <span style="font-size:1.2rem;" aria-hidden="true">👤</span>
+            <span class="card-titulo">Passo 2 — Selecionar Aluno(s)</span>
+          </div>
+          <div class="card-corpo">
+            <p class="texto-mudo mb-1">Selecione para quem este material será adaptado. O perfil do aluno personaliza a adaptação.</p>
+            <div class="alunos-grid" id="alunos-selecao" role="list" aria-label="Lista de alunos disponíveis">
+              <!-- Preenchido via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Passo 3: Observações -->
+        <div class="card mb-3">
+          <div class="card-cabecalho">
+            <span style="font-size:1.2rem;" aria-hidden="true">📝</span>
+            <span class="card-titulo">Passo 3 — Observações (opcional)</span>
+          </div>
+          <div class="card-corpo">
+            <label class="campo-label" for="obs-campo">Instruções especiais para a IA</label>
+            <textarea id="obs-campo" class="campo" rows="3" placeholder="Ex: Simplificar palavras difíceis, usar exemplos do cotidiano, evitar textos longos..." aria-label="Observações para a adaptação"></textarea>
+
+            <label class="campo-label" for="tipo-adaptacao">Tipo de adaptação</label>
+            <select id="tipo-adaptacao" class="campo" aria-label="Selecione o tipo de adaptação">
+              <option value="tdah">TDAH — Foco em objetividade e listas</option>
+              <option value="tea">TEA Nível 1 — Linguagem literal e previsível</option>
+              <option value="ambos">Ambos — Combinação das estratégias</option>
+              <option value="geral">Simplificação Geral</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Botão de adaptação -->
+        <button class="btn btn-sucesso btn-bloco btn-lg" id="btn-adaptar" onclick="iniciarAdaptacao()" aria-label="Iniciar adaptação com IA">
+          ✨ Adaptar com IA
+        </button>
+
+        <!-- Progresso da IA -->
+        <div class="progresso-ia card mt-3" id="progresso-ia" aria-live="polite" aria-label="Progresso da adaptação">
+          <div class="card-corpo">
+            <div class="progresso-etapa" id="etapa-texto">
+              <div class="spinner" aria-hidden="true"></div>
+              <span>Iniciando adaptação...</span>
+            </div>
+            <div class="progresso-barra-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="barra-container">
+              <div class="progresso-barra" id="progresso-barra" aria-valuenow="0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultado -->
+        <div class="resultado-wrapper mt-3" id="resultado-wrapper" aria-live="polite">
+          <div class="resultado-cabecalho" role="status">
+            <div class="resultado-icone" aria-hidden="true">✅</div>
+            <div>
+              <div class="resultado-titulo">Material adaptado com sucesso!</div>
+              <div class="resultado-sub" id="resultado-sub">Adaptado para Lucas M. • TDAH • 14/04/2025</div>
+            </div>
+            <div style="margin-left:auto; display:flex; gap:0.5rem;">
+              <button class="btn btn-sucesso btn-sm" onclick="baixarPDF()" aria-label="Baixar PDF do material adaptado">⬇ Baixar PDF</button>
+              <button class="btn btn-secundario btn-sm" onclick="copiarConteudo()" aria-label="Copiar conteúdo adaptado">📋 Copiar</button>
+            </div>
+          </div>
+
+          <div class="material-adaptado">
+            <div class="material-cabecalho" aria-label="Controles do material">
+              <span>📄</span> <span id="nome-material-resultado">Material Adaptado.pdf</span>
+              <div style="margin-left:auto; display:flex; gap:0.5rem;">
+                <span class="badge badge-azul" id="badge-perfil-resultado">TDAH</span>
+                <span class="badge badge-verde">IA Validada</span>
+              </div>
+            </div>
+            <div class="material-conteudo" id="conteudo-adaptado" tabindex="0" aria-label="Conteúdo do material adaptado">
+              <!-- Preenchido pela IA -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======== SEÇÃO: HISTÓRICO ======== -->
+    <section class="secao" id="secao-historico" aria-label="Histórico de materiais adaptados">
+      <div class="secao-corpo">
+        <h2 class="sr-only">Histórico de materiais</h2>
+        <div class="card">
+          <div class="card-cabecalho">
+            <span class="card-titulo">📄 Todos os Materiais Adaptados</span>
+            <input type="search" class="campo" placeholder="Buscar material..." style="margin:0; width:200px; padding:0.4rem 0.75rem; font-size:0.85rem;" aria-label="Buscar material" oninput="filtrarMateriais(this.value)">
+          </div>
+          <div class="tabela-wrapper">
+            <table id="tabela-materiais" aria-label="Lista de materiais adaptados">
+              <thead>
+                <tr>
+                  <th scope="col">Nome do material</th>
+                  <th scope="col">Aluno</th>
+                  <th scope="col">Perfil</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-materiais">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== SEÇÃO: ALUNOS ======== -->
+    <section class="secao" id="secao-alunos" aria-label="Gestão de alunos">
+      <div class="secao-corpo">
+        <h2 class="sr-only">Gestão de alunos</h2>
+        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+          <div style="flex:1;">
+            <input type="search" class="campo" placeholder="Buscar aluno..." style="margin:0;" aria-label="Buscar aluno" oninput="filtrarAlunos(this.value)">
+          </div>
+          <button class="btn btn-primario" onclick="abrirModal('modal-aluno')" aria-label="Cadastrar novo aluno">
+            + Novo Aluno
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="tabela-wrapper">
+            <table id="tabela-alunos" aria-label="Lista de alunos cadastrados">
+              <thead>
+                <tr>
+                  <th scope="col">Aluno</th>
+                  <th scope="col">Diagnóstico</th>
+                  <th scope="col">Laudo</th>
+                  <th scope="col">Materiais</th>
+                  <th scope="col">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-alunos">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== SEÇÃO: CHATBOT ======== -->
+    <section class="secao" id="secao-chatbot" aria-label="Chatbot educacional com IA">
+      <div class="chat-container">
+        <h2 class="sr-only">Assistente virtual educacional</h2>
+        <div class="chat-mensagens" id="chat-mensagens" aria-live="polite" aria-label="Conversa com a IA">
+          <!-- Mensagem de boas-vindas -->
+          <div class="mensagem ia" role="article" aria-label="Mensagem da IA">
+            <div class="mensagem-avatar ia" aria-hidden="true">IA</div>
+            <div class="mensagem-balao">
+              Olá! Sou o assistente educacional do NeuroInclude. 🧠<br><br>
+              Posso ajudar com <strong>estratégias pedagógicas</strong> para alunos com TDAH e TEA, tirar dúvidas sobre adaptações, ou dar sugestões de atividades inclusivas.<br><br>
+              Como posso ajudar você hoje?
+            </div>
+          </div>
+        </div>
+
+        <div class="sugestoes-chat" aria-label="Sugestões de perguntas rápidas">
+          <button class="sugestao-btn" onclick="enviarSugestao('Quais estratégias usar com alunos com TDAH?')">TDAH: estratégias</button>
+          <button class="sugestao-btn" onclick="enviarSugestao('Como adaptar texto para TEA Nível 1?')">Adaptar para TEA</button>
+          <button class="sugestao-btn" onclick="enviarSugestao('Dicas de atividades inclusivas')">Atividades inclusivas</button>
+          <button class="sugestao-btn" onclick="enviarSugestao('Como estruturar uma prova adaptada?')">Provas adaptadas</button>
+        </div>
+
+        <div class="chat-input-area">
+          <label for="chat-input" class="sr-only">Escreva sua mensagem para o assistente</label>
+          <textarea
+            id="chat-input"
+            class="chat-input"
+            placeholder="Pergunte sobre estratégias pedagógicas, adaptações..."
+            rows="1"
+            aria-label="Campo de mensagem"
+            onkeydown="enviarChatTecla(event)"
+            oninput="ajustarAltura(this)"
+          ></textarea>
+          <button class="chat-enviar" onclick="enviarChat()" aria-label="Enviar mensagem">➤</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ==========================================
+     MODAIS
+========================================== -->
+
+<!-- Modal: Cadastro de Aluno -->
+<div class="modal-overlay" id="modal-aluno" role="dialog" aria-modal="true" aria-labelledby="modal-aluno-titulo">
+  <div class="modal">
+    <div class="modal-cabecalho">
+      <span class="card-titulo" id="modal-aluno-titulo">Cadastrar Novo Aluno</span>
+      <button class="modal-fechar" onclick="fecharModal('modal-aluno')" aria-label="Fechar modal">×</button>
+    </div>
+    <div class="modal-corpo">
+      <div class="linha-campos">
+        <div>
+          <label class="campo-label" for="aluno-nome">Nome completo</label>
+          <input id="aluno-nome" type="text" class="campo" placeholder="Nome do aluno" required aria-required="true">
+        </div>
+        <div>
+          <label class="campo-label" for="aluno-nascimento">Data de nascimento</label>
+          <input id="aluno-nascimento" type="date" class="campo" aria-label="Data de nascimento">
+        </div>
+      </div>
+
+      <label class="campo-label" for="aluno-diagnostico">Diagnóstico</label>
+      <select id="aluno-diagnostico" class="campo" aria-label="Tipo de diagnóstico">
+        <option value="">Selecione o diagnóstico</option>
+        <option value="TDAH">TDAH — Transtorno de Déficit de Atenção e Hiperatividade</option>
+        <option value="TEA1">TEA Nível 1 — Transtorno do Espectro Autista</option>
+        <option value="TDAH+TEA">TDAH + TEA</option>
+        <option value="Dislexia">Dislexia</option>
+        <option value="Outro">Outro</option>
+      </select>
+
+      <label class="campo-label" for="aluno-obs">Observações pedagógicas</label>
+      <textarea id="aluno-obs" class="campo" rows="3" placeholder="Ex: Dificuldade com leitura longa, responde melhor a listas e imagens..."></textarea>
+
+      <div>
+        <label class="campo-label">Laudo Médico (PDF)</label>
+        <div style="border:2px dashed var(--cor-borda); border-radius:var(--raio-md); padding:1.25rem; text-align:center; cursor:pointer; transition:all var(--transicao);"
+          onclick="document.getElementById('input-laudo').click()"
+          onmouseover="this.style.borderColor='var(--cor-primaria)'"
+          onmouseout="this.style.borderColor='var(--cor-borda)'"
+          role="button" tabindex="0" aria-label="Clique para selecionar o laudo em PDF">
+          <span style="font-size:1.5rem;" aria-hidden="true">📋</span>
+          <p style="font-size:0.85rem; color:var(--cor-texto-secundario); margin-top:0.35rem;">Clique para anexar o laudo</p>
+        </div>
+        <input type="file" id="input-laudo" accept=".pdf" style="display:none;" onchange="laudoSelecionado(event)" aria-label="Selecionar laudo em PDF">
+        <p id="laudo-nome" class="texto-mudo mt-1" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="modal-rodape">
+      <button class="btn btn-secundario" onclick="fecharModal('modal-aluno')">Cancelar</button>
+      <button class="btn btn-primario" onclick="salvarAluno()">Salvar Aluno</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cadastro de usuário -->
+<div class="modal-overlay" id="modal-cadastro" role="dialog" aria-modal="true" aria-labelledby="modal-cadastro-titulo">
+  <div class="modal">
+    <div class="modal-cabecalho">
+      <span class="card-titulo" id="modal-cadastro-titulo">Criar Conta</span>
+      <button class="modal-fechar" onclick="fecharModal('modal-cadastro')" aria-label="Fechar">×</button>
+    </div>
+    <div class="modal-corpo">
+      <div class="linha-campos">
+        <div>
+          <label class="campo-label" for="cad-nome">Nome</label>
+          <input id="cad-nome" type="text" class="campo" placeholder="Seu nome">
+        </div>
+        <div>
+          <label class="campo-label" for="cad-papel">Função</label>
+          <select id="cad-papel" class="campo">
+            <option>Professor(a)</option>
+            <option>Psicopedagogo(a)</option>
+            <option>Secretaria</option>
+            <option>Coordenador(a)</option>
+          </select>
+        </div>
+      </div>
+      <label class="campo-label" for="cad-email">E-mail institucional</label>
+      <input id="cad-email" type="email" class="campo" placeholder="email@escola.edu.br">
+      <label class="campo-label" for="cad-senha">Senha</label>
+      <input id="cad-senha" type="password" class="campo" placeholder="Mínimo 8 caracteres">
+      <label class="campo-label" for="cad-escola">Escola / Instituição</label>
+      <input id="cad-escola" type="text" class="campo" placeholder="Nome da escola">
+    </div>
+    <div class="modal-rodape">
+      <button class="btn btn-secundario" onclick="fecharModal('modal-cadastro')">Cancelar</button>
+      <button class="btn btn-primario" onclick="cadastrarUsuario()">Criar Conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Container de Toasts -->
+<div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- ==========================================
+     JAVASCRIPT — LÓGICA DA APLICAÇÃO
+========================================== -->
+<script>
+// ===================================================
+// ESTADO GLOBAL DA APLICAÇÃO
+// ===================================================
+const estado = {
+  usuarioLogado: null,
+  perfilSelecionado: 'professor',
+  alunos: [
+    { id:1, nome:'Lucas Mendes', nascimento:'2015-03-12', diagnostico:'TDAH', obs:'Dificuldade com textos longos. Responde bem a listas.', laudo:true, materiais:4 },
+    { id:2, nome:'Ana Beatriz', nascimento:'2014-07-22', diagnostico:'TEA Nível 1', obs:'Linguagem literal. Evitar metáforas e ironias.', laudo:true, materiais:3 },
+    { id:3, nome:'Pedro Santos', nascimento:'2015-11-05', diagnostico:'TDAH', obs:'Precisa de pausas frequentes e instruções curtas.', laudo:true, materiais:5 },
+    { id:4, nome:'Mariana Costa', nascimento:'2016-01-18', diagnostico:'TEA Nível 1', obs:'Gosta de rotinas visuais e listas numeradas.', laudo:false, materiais:2 },
+    { id:5, nome:'Rafael Lima', nascimento:'2015-09-30', diagnostico:'TDAH+TEA', obs:'Combinação de estratégias visuais e objetivas.', laudo:true, materiais:1 },
+    { id:6, nome:'Sofia Oliveira', nascimento:'2014-05-08', diagnostico:'Dislexia', obs:'Fontes maiores e mais espaçamento entre linhas.', laudo:true, materiais:2 },
+  ],
+  materiais: [
+    { id:1, nome:'Frações — Cap. 3', aluno:'Lucas Mendes', perfil:'TDAH', data:'14/04/2025' },
+    { id:2, nome:'Texto: A Floresta', aluno:'Ana Beatriz', perfil:'TEA Nível 1', data:'13/04/2025' },
+    { id:3, nome:'Ciências — Ecossistemas', aluno:'Pedro Santos', perfil:'TDAH', data:'12/04/2025' },
+    { id:4, nome:'História: Brasil Colonial', aluno:'Mariana Costa', perfil:'TEA Nível 1', data:'10/04/2025' },
+    { id:5, nome:'Português: Verbos', aluno:'Lucas Mendes', perfil:'TDAH', data:'08/04/2025' },
+  ],
+  arquivoSelecionado: null,
+  alunosSelecionados: [],
+  chat: [],
+};
+
+// ===================================================
+// AUTENTICAÇÃO — LOGIN
+// ===================================================
+function selecionarTab(btn, perfil) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('ativo');
+    b.setAttribute('aria-selected', 'false');
+  });
+  btn.classList.add('ativo');
+  btn.setAttribute('aria-selected', 'true');
+  estado.perfilSelecionado = perfil;
+}
+
+function fazerLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const senha = document.getElementById('senha').value;
+
+  if (!email || !senha) {
+    mostrarToast('Preencha e-mail e senha para continuar.', 'erro');
+    return;
+  }
+
+  // Simula login — mapeando perfil
+  const nomesMap = {
+    professor: 'Prof. Ana Lima',
+    psico: 'Psicopedagoga Carla',
+    secretaria: 'Sec. João Pedro',
+  };
+  const papelMap = {
+    professor: 'Professora',
+    psico: 'Psicopedagoga',
+    secretaria: 'Secretaria',
+  };
+
+  estado.usuarioLogado = {
+    nome: nomesMap[estado.perfilSelecionado],
+    papel: papelMap[estado.perfilSelecionado],
+    iniciais: nomesMap[estado.perfilSelecionado].split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase(),
+  };
+
+  // Atualizar sidebar com dados do usuário
+  document.getElementById('sidebar-nome').textContent = estado.usuarioLogado.nome;
+  document.getElementById('sidebar-papel').textContent = estado.usuarioLogado.papel;
+  document.getElementById('sidebar-avatar').textContent = estado.usuarioLogado.iniciais;
+
+  // Trocar tela
+  document.getElementById('tela-login').classList.remove('ativa');
+  const telaApp = document.getElementById('tela-app');
+  telaApp.classList.add('ativa');
+  telaApp.style.display = 'flex';
+
+  // Renderizar dados
+  renderizarAlunos();
+  renderizarAlunossSelecao();
+  renderizarMateriais();
+
+  mostrarToast('Bem-vindo(a), ' + estado.usuarioLogado.nome + '! 👋', 'sucesso');
+
+  // Foco no conteúdo principal (acessibilidade)
+  setTimeout(() => {
+    document.getElementById('conteudo-principal').focus();
+  }, 350);
+}
+
+// ===================================================
+// NAVEGAÇÃO — SEÇÕES
+// ===================================================
+function mostrarSecao(id) {
+  // Atualizar nav items
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('ativo');
+    item.removeAttribute('aria-current');
+  });
+  const secaoTitulos = {
+    dashboard: 'Dashboard',
+    adaptar: 'Adaptar Material',
+    historico: 'Materiais Adaptados',
+    alunos: 'Alunos',
+    chatbot: 'Chatbot IA',
+    perfil: 'Meu Perfil',
+  };
+
+  // Atualizar título
+  document.getElementById('topbar-titulo').textContent = secaoTitulos[id] || id;
+
+  // Ativar nav item correspondente
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(item => {
+    if (item.getAttribute('onclick') && item.getAttribute('onclick').includes("'" + id + "'")) {
+      item.classList.add('ativo');
+      item.setAttribute('aria-current', 'page');
+    }
+  });
+
+  // Esconder todas as seções
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+
+  // Mostrar seção escolhida
+  const secao = document.getElementById('secao-' + id);
+  if (secao) {
+    secao.classList.add('ativa');
+    secao.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Fechar sidebar mobile
+  fecharSidebar();
+}
+
+// ===================================================
+// SIDEBAR MOBILE
+// ===================================================
+function abrirSidebar() {
+  document.getElementById('sidebar').classList.add('aberta');
+  document.getElementById('overlay-mobile').classList.add('visivel');
+  document.getElementById('btn-menu').setAttribute('aria-expanded', 'true');
+}
+function fecharSidebar() {
+  document.getElementById('sidebar').classList.remove('aberta');
+  document.getElementById('overlay-mobile').classList.remove('visivel');
+  document.getElementById('btn-menu').setAttribute('aria-expanded', 'false');
+}
+
+// ===================================================
+// UPLOAD DE ARQUIVO
+// ===================================================
+function arrastarSobre(e) {
+  e.preventDefault();
+  document.getElementById('zona-upload').classList.add('arrastando');
+}
+function arrastarSair(e) {
+  document.getElementById('zona-upload').classList.remove('arrastando');
+}
+function soltarArquivo(e) {
+  e.preventDefault();
+  arrastarSair(e);
+  const file = e.dataTransfer.files[0];
+  if (file) processarArquivo(file);
+}
+function arquivoSelecionado(e) {
+  const file = e.target.files[0];
+  if (file) processarArquivo(file);
+}
+function processarArquivo(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    mostrarToast('Por favor, envie apenas arquivos PDF.', 'erro');
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    mostrarToast('Arquivo muito grande. Máximo 20MB.', 'erro');
+    return;
+  }
+  estado.arquivoSelecionado = file;
+  document.getElementById('arquivo-nome').textContent = file.name;
+  document.getElementById('arquivo-tamanho').textContent = formatarTamanho(file.size);
+  document.getElementById('arquivo-selecionado').classList.add('visivel');
+  document.getElementById('zona-upload').style.display = 'none';
+  mostrarToast('Arquivo carregado com sucesso!', 'sucesso');
+}
+function removerArquivo() {
+  estado.arquivoSelecionado = null;
+  document.getElementById('input-arquivo').value = '';
+  document.getElementById('arquivo-selecionado').classList.remove('visivel');
+  document.getElementById('zona-upload').style.display = 'block';
+}
+function formatarTamanho(bytes) {
+  if (bytes < 1024) return bytes + ' bytes';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+// ===================================================
+// SELEÇÃO DE ALUNOS (tela de adaptação)
+// ===================================================
+function renderizarAlunossSelecao() {
+  const container = document.getElementById('alunos-selecao');
+  container.innerHTML = '';
+  estado.alunos.forEach(aluno => {
+    const div = document.createElement('div');
+    div.className = 'aluno-card';
+    div.setAttribute('role', 'listitem');
+    div.setAttribute('tabindex', '0');
+    div.setAttribute('aria-label', `${aluno.nome} — ${aluno.diagnostico}`);
+    div.setAttribute('aria-pressed', 'false');
+    div.innerHTML = `
+      <div class="check" aria-hidden="true">✓</div>
+      <div class="avatar ${corAvatar(aluno.diagnostico)}" aria-hidden="true">${aluno.nome.split(' ').map(p=>p[0]).join('').substring(0,2)}</div>
+      <div class="aluno-nome">${aluno.nome}</div>
+      <div class="aluno-laudo">
+        <span class="badge ${badgeDiag(aluno.diagnostico)}">${aluno.diagnostico}</span>
+        ${aluno.laudo ? '&nbsp;<span class="badge badge-verde">📋 Laudo</span>' : ''}
+      </div>
+    `;
+    div.onclick = () => selecionarAluno(div, aluno.id);
+    div.onkeydown = (e) => { if(e.key==='Enter'||e.key===' ') selecionarAluno(div, aluno.id); };
+    container.appendChild(div);
+  });
+}
+function selecionarAluno(card, id) {
+  card.classList.toggle('selecionado');
+  const ativo = card.classList.contains('selecionado');
+  card.setAttribute('aria-pressed', ativo.toString());
+  if (ativo) {
+    estado.alunosSelecionados.push(id);
+  } else {
+    estado.alunosSelecionados = estado.alunosSelecionados.filter(a => a !== id);
+  }
+}
+function corAvatar(diag) {
+  if (diag.includes('TEA')) return 'ambar';
+  if (diag.includes('TDAH')) return '';
+  return 'verde';
+}
+function badgeDiag(diag) {
+  if (diag.includes('TEA')) return 'badge-ambar';
+  if (diag.includes('TDAH')) return 'badge-azul';
+  return 'badge-cinza';
+}
+
+// ===================================================
+// ADAPTAÇÃO COM IA (Claude API)
+// ===================================================
+async function iniciarAdaptacao() {
+  if (!estado.arquivoSelecionado) {
+    mostrarToast('Selecione um PDF antes de continuar.', 'erro');
+    return;
+  }
+  if (estado.alunosSelecionados.length === 0) {
+    mostrarToast('Selecione ao menos um aluno.', 'erro');
+    return;
+  }
+
+  const aluno = estado.alunos.find(a => a.id === estado.alunosSelecionados[0]);
+  const tipo = document.getElementById('tipo-adaptacao').value;
+  const obs = document.getElementById('obs-campo').value;
+
+  // Mostrar progresso
+  const progDiv = document.getElementById('progresso-ia');
+  progDiv.classList.add('visivel');
+  document.getElementById('resultado-wrapper').classList.remove('visivel');
+  document.getElementById('btn-adaptar').disabled = true;
+  document.getElementById('btn-adaptar').textContent = 'Adaptando...';
+
+  const etapas = [
+    { texto: 'Lendo o conteúdo do PDF...', pct: 20 },
+    { texto: 'Analisando perfil do aluno...', pct: 40 },
+    { texto: 'Aplicando estratégias pedagógicas...', pct: 65 },
+    { texto: 'Simplificando linguagem...', pct: 80 },
+    { texto: 'Finalizando adaptação...', pct: 95 },
+  ];
+
+  for (const etapa of etapas) {
+    atualizarProgresso(etapa.texto, etapa.pct);
+    await sleep(600);
+  }
+
+  // Chamar Claude API
+  try {
+    const promptSistema = `Você é um especialista em educação inclusiva e adaptação de materiais para crianças neurodivergentes.
+Seu papel é adaptar materiais acadêmicos seguindo estratégias pedagógicas comprovadas.
+
+Ao adaptar, você deve:
+- Simplificar vocabulário sem perder o conteúdo
+- Dividir informações em partes pequenas
+- Usar listas com marcadores para organizar ideias
+- Destacar conceitos principais em boxes especiais
+- Escrever frases curtas e diretas
+- Usar linguagem concreta e evitar metáforas ambíguas
+${tipo === 'tdah' ? '- TDAH: priorizar objetividade, títulos chamativos, blocos curtos' : ''}
+${tipo === 'tea' ? '- TEA: linguagem 100% literal, sem sarcasmo, sequência previsível e clara' : ''}
+${tipo === 'ambos' ? '- Combinar estratégias de TDAH e TEA' : ''}
+
+IMPORTANTE: Responda APENAS com o conteúdo adaptado em formato estruturado com:
+- Título principal (##)
+- Seções com subtítulos (###)
+- Listas com marcadores (-)
+- Um "BOX IMPORTANTE:" para destaque
+Não adicione explicações antes ou depois. Apenas o conteúdo adaptado.`;
+
+    const conteudoSimulado = `Imagine que este é o texto do PDF enviado pelo professor sobre "${estado.arquivoSelecionado.name.replace('.pdf', '')}". O conteúdo aborda conceitos acadêmicos que precisam ser adaptados para ${aluno.nome}, que tem ${aluno.diagnostico}.
+    
+    Contexto do aluno: ${aluno.obs}
+    Observação do professor: ${obs || 'Nenhuma observação adicional.'}
+    
+    Por favor, crie um exemplo de adaptação completo com pelo menos 3 seções, uma lista de pontos principais e um box de destaque. Escreva como se fosse um material real e completo para a aula.`;
+
+    const resposta = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: promptSistema,
+        messages: [{ role: 'user', content: conteudoSimulado }],
+      }),
+    });
+
+    const data = await resposta.json();
+    const textoAdaptado = data.content?.map(b => b.text || '').join('') || '';
+
+    atualizarProgresso('Concluído!', 100);
+    await sleep(400);
+
+    progDiv.classList.remove('visivel');
+    mostrarResultado(textoAdaptado, aluno, tipo);
+
+  } catch (err) {
+    // Fallback com conteúdo de demonstração
+    console.error('API error, usando fallback:', err);
+    atualizarProgresso('Concluído!', 100);
+    await sleep(400);
+    progDiv.classList.remove('visivel');
+    const fallback = gerarFallback(aluno, tipo);
+    mostrarResultado(fallback, aluno, tipo);
+  }
+
+  document.getElementById('btn-adaptar').disabled = false;
+  document.getElementById('btn-adaptar').textContent = '✨ Adaptar com IA';
+  mostrarToast('Material adaptado com sucesso! ✅', 'sucesso');
+
+  // Adicionar ao histórico
+  estado.materiais.unshift({
+    id: Date.now(),
+    nome: estado.arquivoSelecionado.name.replace('.pdf', ''),
+    aluno: aluno.nome,
+    perfil: aluno.diagnostico,
+    data: new Date().toLocaleDateString('pt-BR'),
+  });
+  renderizarMateriais();
+}
+
+function gerarFallback(aluno, tipo) {
+  const nomeMaterial = estado.arquivoSelecionado?.name?.replace('.pdf', '') || 'Material';
+  return `## ${nomeMaterial} — Versão Adaptada
+
+### O que você vai aprender?
+
+- O material foi simplificado especialmente para você
+- As ideias foram divididas em partes pequenas
+- Cada parte tem uma tarefa clara
+
+### Principais conceitos
+
+- **Conceito 1:** Explicação curta e direta usando palavras simples
+- **Conceito 2:** Outro ponto importante em linguagem acessível
+- **Conceito 3:** Ideia central resumida em uma frase
+
+### Como estudar esse material?
+
+1. Leia uma parte de cada vez
+2. Faça uma pausa depois de cada seção
+3. Marque o que você entendeu
+4. Peça ajuda se tiver dúvida
+
+BOX IMPORTANTE: A ideia mais importante deste material é aprender passo a passo, sem pressa. Você consegue! 🌟
+
+### Atividade rápida
+
+Tente responder: Qual foi a parte mais fácil de entender?
+
+Adaptado especialmente para ${aluno.nome} • Perfil: ${aluno.diagnostico}`;
+}
+
+function atualizarProgresso(texto, pct) {
+  document.getElementById('etapa-texto').innerHTML = `<div class="spinner"></div><span>${texto}</span>`;
+  const barra = document.getElementById('progresso-barra');
+  barra.style.width = pct + '%';
+  barra.setAttribute('aria-valuenow', pct);
+  barra.closest('[role=progressbar]')?.setAttribute('aria-valuenow', pct);
+}
+
+function mostrarResultado(texto, aluno, tipo) {
+  const wrapper = document.getElementById('resultado-wrapper');
+  wrapper.classList.add('visivel');
+
+  document.getElementById('resultado-sub').textContent =
+    `Adaptado para ${aluno.nome} • ${aluno.diagnostico} • ${new Date().toLocaleDateString('pt-BR')}`;
+  document.getElementById('nome-material-resultado').textContent =
+    (estado.arquivoSelecionado?.name || 'Material') + ' — Adaptado';
+  document.getElementById('badge-perfil-resultado').textContent = aluno.diagnostico;
+
+  // Renderizar markdown simples → HTML
+  const html = markdownParaHTML(texto);
+  document.getElementById('conteudo-adaptado').innerHTML = html;
+
+  wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Parser leve de markdown → HTML (para exibição do resultado)
+function markdownParaHTML(md) {
+  let html = md
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3 style="font-weight:700;margin:1rem 0 0.5rem;color:var(--cor-texto-principal)">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^BOX IMPORTANTE: (.+)$/gm, '<div class="destaque-box"><strong>📌 Destaque Importante</strong>$1</div>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li style="padding:0.4rem 0.75rem;margin-bottom:0.3rem;background:var(--cor-fundo);border-radius:var(--raio-sm);list-style-type:decimal;margin-left:1.5rem">$2</li>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
+      if (match.includes('list-style-type:decimal')) return '<ol style="padding:0;margin:0.5rem 0">' + match + '</ol>';
+      return '<ul>' + match + '</ul>';
+    })
+    .replace(/\n{2,}/g, '</p><p style="margin:0.5rem 0">')
+    .replace(/\n/g, ' ');
+  return html;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===================================================
+// ALUNOS — GESTÃO
+// ===================================================
+function renderizarAlunos() {
+  const tbody = document.getElementById('tbody-alunos');
+  tbody.innerHTML = '';
+  estado.alunos.forEach(aluno => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div class="avatar ${corAvatar(aluno.diagnostico)}" style="width:32px;height:32px;font-size:0.75rem;" aria-hidden="true">
+            ${aluno.nome.split(' ').map(p=>p[0]).join('').substring(0,2)}
+          </div>
+          <div>
+            <div style="font-weight:700">${aluno.nome}</div>
+            <div style="font-size:0.75rem;color:var(--cor-texto-mudo)">${calcularIdade(aluno.nascimento)} anos</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge ${badgeDiag(aluno.diagnostico)}">${aluno.diagnostico}</span></td>
+      <td>${aluno.laudo ? '<span class="badge badge-verde">✓ Cadastrado</span>' : '<span class="badge badge-cinza">Pendente</span>'}</td>
+      <td><span class="badge badge-cinza">${aluno.materiais} materiais</span></td>
+      <td>
+        <div class="acoes-td">
+          <button class="btn btn-secundario btn-sm" onclick="editarAluno(${aluno.id})" aria-label="Editar ${aluno.nome}">Editar</button>
+          <button class="btn btn-perigo btn-sm" onclick="excluirAluno(${aluno.id})" aria-label="Excluir ${aluno.nome}">Excluir</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function calcularIdade(nascimento) {
+  if (!nascimento) return '?';
+  const hoje = new Date();
+  const nasc = new Date(nascimento);
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  if (hoje < new Date(hoje.getFullYear(), nasc.getMonth(), nasc.getDate())) idade--;
+  return idade;
+}
+
+function filtrarAlunos(termo) {
+  const trs = document.querySelectorAll('#tbody-alunos tr');
+  trs.forEach(tr => {
+    const texto = tr.textContent.toLowerCase();
+    tr.style.display = texto.includes(termo.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function salvarAluno() {
+  const nome = document.getElementById('aluno-nome').value.trim();
+  const diagnostico = document.getElementById('aluno-diagnostico').value;
+  const nascimento = document.getElementById('aluno-nascimento').value;
+  const obs = document.getElementById('aluno-obs').value;
+
+  if (!nome) { mostrarToast('Nome do aluno é obrigatório.', 'erro'); return; }
+  if (!diagnostico) { mostrarToast('Selecione um diagnóstico.', 'erro'); return; }
+
+  const novoAluno = {
+    id: Date.now(),
+    nome, diagnostico, nascimento, obs,
+    laudo: !!document.getElementById('laudo-nome').textContent,
+    materiais: 0,
+  };
+  estado.alunos.push(novoAluno);
+  renderizarAlunos();
+  renderizarAlunossSelecao();
+  document.getElementById('m-alunos').textContent = estado.alunos.length;
+  fecharModal('modal-aluno');
+  mostrarToast(`Aluno ${nome} cadastrado! ✅`, 'sucesso');
+  document.getElementById('aluno-nome').value = '';
+  document.getElementById('aluno-diagnostico').value = '';
+  document.getElementById('aluno-nascimento').value = '';
+  document.getElementById('aluno-obs').value = '';
+  document.getElementById('laudo-nome').textContent = '';
+}
+
+function excluirAluno(id) {
+  if (!confirm('Tem certeza que deseja excluir este aluno?')) return;
+  estado.alunos = estado.alunos.filter(a => a.id !== id);
+  renderizarAlunos();
+  renderizarAlunossSelecao();
+  document.getElementById('m-alunos').textContent = estado.alunos.length;
+  mostrarToast('Aluno removido.', 'info');
+}
+
+function editarAluno(id) {
+  const aluno = estado.alunos.find(a => a.id === id);
+  if (!aluno) return;
+  document.getElementById('aluno-nome').value = aluno.nome;
+  document.getElementById('aluno-diagnostico').value = aluno.diagnostico;
+  document.getElementById('aluno-nascimento').value = aluno.nascimento;
+  document.getElementById('aluno-obs').value = aluno.obs;
+  abrirModal('modal-aluno');
+}
+
+function laudoSelecionado(e) {
+  const file = e.target.files[0];
+  if (file) document.getElementById('laudo-nome').textContent = '📋 ' + file.name;
+}
+
+// ===================================================
+// MATERIAIS — HISTÓRICO
+// ===================================================
+function renderizarMateriais() {
+  const tbody = document.getElementById('tbody-materiais');
+  tbody.innerHTML = '';
+  estado.materiais.forEach(mat => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span style="font-weight:600">📄 ${mat.nome}</span></td>
+      <td>${mat.aluno}</td>
+      <td><span class="badge ${badgeDiag(mat.perfil)}">${mat.perfil}</span></td>
+      <td>${mat.data}</td>
+      <td>
+        <div class="acoes-td">
+          <button class="btn btn-secundario btn-sm" onclick="mostrarToast('Baixando PDF...', 'info')" aria-label="Baixar ${mat.nome}">⬇ Baixar</button>
+          <button class="btn btn-perigo btn-sm" onclick="excluirMaterial(${mat.id})" aria-label="Excluir ${mat.nome}">Excluir</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('m-materiais').textContent = estado.materiais.length;
+}
+
+function filtrarMateriais(termo) {
+  const trs = document.querySelectorAll('#tbody-materiais tr');
+  trs.forEach(tr => {
+    const texto = tr.textContent.toLowerCase();
+    tr.style.display = texto.includes(termo.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function excluirMaterial(id) {
+  if (!confirm('Excluir este material?')) return;
+  estado.materiais = estado.materiais.filter(m => m.id !== id);
+  renderizarMateriais();
+  mostrarToast('Material removido.', 'info');
+}
+
+// ===================================================
+// CHATBOT IA
+// ===================================================
+const respostasChat = {
+  tdah: `Para alunos com **TDAH**, recomendo:\n\n• **Instrução em blocos curtos** — no máximo 3 passos por vez\n• **Listas visuais** em vez de parágrafos longos\n• **Pausas programadas** a cada 15-20 minutos\n• **Feedback imediato** e positivo\n• **Material colorido** para organizar informações\n\nO NeuroInclude aplica automaticamente essas estratégias na adaptação! 🧠`,
+  tea: `Para alunos com **TEA Nível 1**, as principais estratégias são:\n\n• **Linguagem literal** — evitar metáforas, sarcasmo e ironia\n• **Sequência previsível** — sempre a mesma estrutura\n• **Rotina visual** — cronogramas e passo a passo\n• **Explícito é melhor** — nunca subentender nada\n• **Antecipação** — avisar mudanças com antecedência\n\nO perfil do aluno no sistema já personaliza tudo isso! ✨`,
+  adaptar: `Para adaptar texto para **TEA Nível 1**:\n\n1. Use frases curtas (máx. 15 palavras)\n2. Uma ideia por frase\n3. Palavras conhecidas e concretas\n4. Sem figuras de linguagem\n5. Sequência lógica e previsível\n\nExemplo:\n❌ "O sol despediu-se do horizonte."\n✅ "O sol foi embora. Ficou escuro."\n\nNo NeuroInclude, envie o PDF e a IA faz isso automaticamente! 📄`,
+  atividades: `**Atividades inclusivas** eficazes:\n\n• **Mapas mentais** — organização visual de conteúdo\n• **Fichas com imagens** — conceito + ilustração\n• **Jogos de correspondência** — associar palavras e figuras\n• **Roteiros com passos** — instrução clara por etapa\n• **Leituras em dupla** — apoio entre pares\n\nQuer que eu sugira atividades para um conteúdo específico? 🎮`,
+  provas: `**Provas adaptadas** para neurodivergentes:\n\n• **Tempo estendido** — 25% a mais é recomendado pela legislação\n• **Local separado** — evitar distração\n• **Questões claras** — uma informação por vez\n• **Formatação espaçada** — fonte maior, linhas espaçadas\n• **Opções múltiplas simples** — máx. 4 alternativas com linguagem direta\n\nO material gerado pelo NeuroInclude já segue essas diretrizes! ✅`,
+};
+
+const sugestoesResposta = [
+  'tdah', 'tea', 'adaptar', 'atividades', 'provas'
+];
+
+function detectarTema(msg) {
+  const m = msg.toLowerCase();
+  if (m.includes('tdah') || m.includes('atenção') || m.includes('hiperativ')) return 'tdah';
+  if (m.includes('tea') || m.includes('autis') || m.includes('literal')) return 'tea';
+  if (m.includes('adapt') || m.includes('text')) return 'adaptar';
+  if (m.includes('atividade') || m.includes('jogo') || m.includes('inclusiv')) return 'atividades';
+  if (m.includes('prova') || m.includes('avali') || m.includes('test')) return 'provas';
+  return null;
+}
+
+async function enviarChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  ajustarAltura(input);
+  adicionarMensagem(msg, 'usuario');
+
+  // Mostrar "digitando"
+  const digitandoId = mostrarDigitando();
+
+  // Chamar API
+  try {
+    const historico = estado.chat.map(c => ({ role: c.papel === 'ia' ? 'assistant' : 'user', content: c.texto }));
+    historico.push({ role: 'user', content: msg });
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `Você é um assistente educacional especializado em educação inclusiva para crianças neurodivergentes (TDAH, TEA nível 1, dislexia). 
+Ajude professores e psicopedagogos com estratégias pedagógicas, adaptações de material e dicas práticas.
+Seja objetivo, empático e prático. Use listas e formatação clara. Responda em português do Brasil.
+Mencione que o NeuroInclude pode automatizar adaptações quando relevante.`,
+        messages: historico,
+      }),
+    });
+
+    const data = await resp.json();
+    const resposta = data.content?.map(b => b.text || '').join('') || '';
+    removerDigitando(digitandoId);
+    adicionarMensagem(resposta, 'ia');
+
+  } catch (err) {
+    removerDigitando(digitandoId);
+    // Fallback baseado em palavras-chave
+    const tema = detectarTema(msg);
+    const fallback = tema ? respostasChat[tema] :
+      `Obrigado pela pergunta! 🧠\n\nPosso ajudar com estratégias para TDAH, TEA nível 1, dislexia e outras condições neurodivergentes.\n\nTente perguntar sobre:\n• Estratégias para TDAH\n• Como adaptar textos para TEA\n• Atividades inclusivas\n• Provas adaptadas\n\nOu use o módulo "Adaptar Material" para adaptar PDFs automaticamente! ✨`;
+    adicionarMensagem(fallback, 'ia');
+  }
+}
+
+function adicionarMensagem(texto, papel) {
+  estado.chat.push({ texto, papel });
+  const container = document.getElementById('chat-mensagens');
+
+  const div = document.createElement('div');
+  div.className = `mensagem ${papel === 'ia' ? 'ia' : 'usuario'}`;
+  div.setAttribute('role', 'article');
+  div.setAttribute('aria-label', papel === 'ia' ? 'Mensagem da IA' : 'Sua mensagem');
+
+  const avatarLabel = papel === 'ia' ? 'IA' : (estado.usuarioLogado?.iniciais || 'EU');
+  const textoFormatado = texto
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+
+  div.innerHTML = `
+    <div class="mensagem-avatar ${papel}" aria-hidden="true">${avatarLabel}</div>
+    <div class="mensagem-balao">${textoFormatado}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function mostrarDigitando() {
+  const id = 'digitando-' + Date.now();
+  const container = document.getElementById('chat-mensagens');
+  const div = document.createElement('div');
+  div.className = 'mensagem ia';
+  div.id = id;
+  div.setAttribute('aria-label', 'IA está digitando');
+  div.innerHTML = `
+    <div class="mensagem-avatar ia" aria-hidden="true">IA</div>
+    <div class="mensagem-balao"><div class="digitando"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removerDigitando(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function enviarSugestao(texto) {
+  document.getElementById('chat-input').value = texto;
+  enviarChat();
+}
+
+function enviarChatTecla(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    enviarChat();
+  }
+}
+
+function ajustarAltura(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ===================================================
+// MODAIS
+// ===================================================
+function abrirModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.add('aberto');
+  // Foco no primeiro campo
+  setTimeout(() => {
+    const primeiro = modal.querySelector('input, select, textarea');
+    if (primeiro) primeiro.focus();
+  }, 100);
+}
+
+function fecharModal(id) {
+  document.getElementById(id).classList.remove('aberto');
+}
+
+// Fechar modal clicando no overlay
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('aberto');
+  });
+});
+
+// Fechar modal com ESC
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.aberto').forEach(m => m.classList.remove('aberto'));
+    fecharSidebar();
+  }
+});
+
+// ===================================================
+// TOAST NOTIFICATIONS
+// ===================================================
+function mostrarToast(msg, tipo = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${tipo}`;
+  const icones = { sucesso: '✅', erro: '❌', info: '💡' };
+  toast.innerHTML = `<span aria-hidden="true">${icones[tipo] || '💡'}</span><span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+// ===================================================
+// AÇÕES DO RESULTADO
+// ===================================================
+function baixarPDF() {
+  mostrarToast('Gerando PDF... (funcionalidade completa requer backend)', 'info');
+}
+
+function copiarConteudo() {
+  const conteudo = document.getElementById('conteudo-adaptado').innerText;
+  navigator.clipboard.writeText(conteudo).then(() => {
+    mostrarToast('Conteúdo copiado para a área de transferência!', 'sucesso');
+  }).catch(() => {
+    mostrarToast('Selecione o texto manualmente para copiar.', 'info');
+  });
+}
+
+// ===================================================
+// CADASTRO DE USUÁRIO
+// ===================================================
+function cadastrarUsuario() {
+  const nome = document.getElementById('cad-nome').value.trim();
+  const email = document.getElementById('cad-email').value.trim();
+  if (!nome || !email) { mostrarToast('Preencha nome e e-mail.', 'erro'); return; }
+  fecharModal('modal-cadastro');
+  mostrarToast('Conta criada! Faça login para continuar.', 'sucesso');
+}
+
+// ===================================================
+// INIT — configuração inicial
+// ===================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Garantir que apenas a tela de login está visível no início
+  document.getElementById('tela-login').style.display = 'grid';
+  document.getElementById('tela-app').style.display = 'none';
+});
+</script>
+</body>
+</html>

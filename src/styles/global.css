@@ -1,0 +1,5 @@
+@import "./neuroinclude.css";
+
+#root {
+  min-height: 100vh;
+}
