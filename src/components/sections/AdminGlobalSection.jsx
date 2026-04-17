@@ -637,7 +637,7 @@ export default function AdminGlobalSection({ active }) {
                     if (!created) return
                     setSub({ instituicaoId: "", nome: "", email: "", senha: "" })
                     setSenhaGerada("")
-                    toast("SubAdmin criado com sucesso.", "sucesso")
+                    toast("SubAdmin criado com sucesso! Verifique se o SubAdmin aparece na aba 'Usuários'. Se não conseguir fazer login, verifique se a confirmação de email está desativada no Supabase (Authentication → Providers → Email) ou confirme o email na caixa de entrada.", "sucesso")
                   }}
                 >
                   Criar SubAdmin

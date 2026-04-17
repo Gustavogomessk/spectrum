@@ -169,6 +169,7 @@ export function SpectrumProvider({ children }) {
       const s = data.session
       if (!s?.user) return
       const meta = s.user.user_metadata || {}
+      console.log("Metadata do usuário logado:", meta)
       setUsuario({
         id: s.user.id,
         email: s.user.email,
@@ -246,7 +247,7 @@ export function SpectrumProvider({ children }) {
   }, [])
 
   const cadastroSupabase = useCallback(
-    async ({ nome, email, senha, papel, escola }) => {
+    async ({ nome, email, senha, papel, escola, schoolId }) => {
       if (!supabase) {
         toast("Supabase não configurado. Adicione VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env e reinicie o servidor.", "erro")
         return { ok: false }
@@ -268,6 +269,7 @@ export function SpectrumProvider({ children }) {
             nome,
             papel,
             escola,
+            schoolId: schoolId || escola,
             funcao: funcaoMetadataDePapelCadastro(papel),
           },
         },
@@ -373,6 +375,7 @@ export function SpectrumProvider({ children }) {
 
   const criarSubadmin = useCallback(
     async (payload) => {
+      console.log("Criando SubAdmin:", payload)
       if (isSupabaseConfigured() && supabase) {
         const senhaLimpa = payload.senha || ""
         if (senhaLimpa.length < 6) {
@@ -386,14 +389,19 @@ export function SpectrumProvider({ children }) {
           senha: senhaLimpa,
           papel: "subadmin",
           escola: payload.instituicaoId,
+          schoolId: payload.instituicaoId,
         })
 
         if (!res?.ok) {
+          console.log("Erro ao criar SubAdmin no Supabase:", res)
           return false
         }
+        console.log("SubAdmin criado no Supabase com sucesso")
       }
 
-      createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1 })
+      const user = createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1 })
+      console.log("SubAdmin criado no adminData:", user)
+      console.log("Todos os usuários no adminData:", getAdminData().usuarios)
       setAdminData(getAdminData())
       return true
     },
