@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react"
 import { useSpectrum } from "../../context/SpectrumContext"
 
+const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria"]
+
 export default function AdminInstituicaoSection({ active }) {
-  const { usuario, adminData, criarUsuarioInstituicao, atualizarLicencasUsuario, toast } = useSpectrum()
-  const [novo, setNovo] = useState({ nome: "", email: "", papel: "professor", licencas: 1 })
+  const { usuario, adminData, criarUsuarioInstituicao, editarUsuario, toast } = useSpectrum()
+  const [novo, setNovo] = useState({ nome: "", email: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
 
   const instituicaoId = usuario?.schoolId || "inst-1"
 
@@ -30,7 +32,13 @@ export default function AdminInstituicaoSection({ active }) {
                 <option value="psicopedagogo">Psicopedagogo</option>
                 <option value="professor">Professor</option>
               </select>
-              <input className="campo" type="number" min={1} placeholder="Licenças" value={novo.licencas} onChange={(e) => setNovo((s) => ({ ...s, licencas: e.target.value }))} />
+              <select className="campo" value={novo.tipoLicenca} onChange={(e) => setNovo((s) => ({ ...s, tipoLicenca: e.target.value }))}>
+                {USUARIO_LICENCAS.map((lic) => (
+                  <option key={lic} value={lic}>
+                    {lic}
+                  </option>
+                ))}
+              </select>
             </div>
             <button
               type="button"
@@ -38,7 +46,7 @@ export default function AdminInstituicaoSection({ active }) {
               onClick={() => {
                 if (!novo.nome || !novo.email) return toast("Preencha nome e email.", "erro")
                 criarUsuarioInstituicao({ ...novo, instituicaoId })
-                setNovo({ nome: "", email: "", papel: "professor", licencas: 1 })
+                setNovo({ nome: "", email: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
                 toast("Usuário criado.", "sucesso")
               }}
             >
@@ -58,7 +66,7 @@ export default function AdminInstituicaoSection({ active }) {
                   <th>Nome</th>
                   <th>Email</th>
                   <th>Papel</th>
-                  <th>Licenças</th>
+                  <th>Licença</th>
                 </tr>
               </thead>
               <tbody>
@@ -68,14 +76,17 @@ export default function AdminInstituicaoSection({ active }) {
                     <td>{u.email}</td>
                     <td>{u.papel}</td>
                     <td>
-                      <input
+                      <select
                         className="campo"
-                        style={{ margin: 0, maxWidth: "90px" }}
-                        type="number"
-                        min={0}
-                        value={u.licencas}
-                        onChange={(e) => atualizarLicencasUsuario(u.id, e.target.value)}
-                      />
+                        value={u.tipoLicenca || "Basic"}
+                        onChange={(e) => editarUsuario(u.id, { tipoLicenca: e.target.value })}
+                      >
+                        {USUARIO_LICENCAS.map((lic) => (
+                          <option key={lic} value={lic}>
+                            {lic}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                   </tr>
                 ))}

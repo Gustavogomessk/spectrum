@@ -48,6 +48,37 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
 
         <div className="card mb-3">
           <div className="card-cabecalho">
+            <span className="card-titulo">Gráfico de Adaptações (últimos 7 dias)</span>
+          </div>
+          <div className="card-corpo">
+            <svg width="100%" height="200" viewBox="0 0 400 200" style={{ maxWidth: "100%" }}>
+              {/* Eixos */}
+              <line x1="40" y1="160" x2="390" y2="160" stroke="var(--cor-borda)" strokeWidth="1" />
+              <line x1="40" y1="20" x2="40" y2="160" stroke="var(--cor-borda)" strokeWidth="1" />
+
+              {/* Barras */}
+              {[45, 52, 38, 65, 72, 55, 48].map((valor, i) => (
+                <g key={i}>
+                  <rect x={50 + i * 48} y={160 - (valor * 1.2)} width="38" height={valor * 1.2} fill="var(--cor-primaria)" rx="4" />
+                  <text x={69 + i * 48} y="175" textAnchor="middle" fontSize="12" fill="var(--cor-texto-mudo)">
+                    {["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"][i]}
+                  </text>
+                  <text x={69 + i * 48} y={155 - (valor * 1.2) - 5} textAnchor="middle" fontSize="11" fill="var(--cor-texto-principal)" fontWeight="600">
+                    {valor}
+                  </text>
+                </g>
+              ))}
+            </svg>
+            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--cor-borda)" }}>
+              <div style={{ fontSize: "0.85rem", color: "var(--cor-texto-secundario)" }}>
+                <strong>Média:</strong> 53 adaptações/dia • <strong>Total:</strong> 375 adaptações
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card mb-3">
+          <div className="card-cabecalho">
             <span className="card-titulo">Atividade Recente</span>
             <button type="button" className="btn btn-secundario btn-sm" onClick={onVerHistorico}>
               Ver tudo

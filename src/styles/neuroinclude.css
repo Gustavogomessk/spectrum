@@ -349,6 +349,7 @@
   .badge-azul { background: var(--cor-primaria-clara); color: var(--cor-primaria); }
   .badge-verde { background: var(--cor-secundaria-clara); color: #2d8f63; }
   .badge-ambar { background: var(--cor-acento-clara); color: #a36b10; }
+  .badge-vermelho { background: #fdd4d4; color: var(--cor-perigo); }
   .badge-perigo { background: var(--cor-perigo-clara); color: var(--cor-perigo); }
   .badge-cinza { background: #f0f2f7; color: var(--cor-texto-secundario); }
 

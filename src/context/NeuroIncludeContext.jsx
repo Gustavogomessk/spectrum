@@ -11,7 +11,7 @@ import {
   updateAluno,
 } from "../services/supabaseData"
 import { sanitizeStorageSegment, uploadPdf } from "../services/files"
-import { atualizarLicenca, createInstituicao, createUsuarioInstituicao, enviarNotificacao, getAdminData } from "../services/adminData"
+import { atualizarLicenca, atualizarLicencasUsuario, atualizarStatusBoleto as atualizarStatusBoletoApi, createInstituicao, editarInstituicao as editarInstituicaoStore, createUsuarioInstituicao, enviarNotificacao, getAdminData, desabilitarInstituicao, habilitarInstituicao, desabilitarUsuario, habilitarUsuario, criarBoleto, deletarBoleto, deletarUsuario, editarUsuario, deletarInstituicao, obterTokensCohere } from "../services/adminData"
 import { mensagemErroSupabaseAuth } from "../utils/authErrors"
 import { isErroRelacionamentoPostgrest, isErroTabelaAusente, resumoErroSupabase } from "../utils/supabaseErrors"
 import { funcaoMetadataDePapelCadastro, isAdmin, PERFIL, SECOES_SO_EDUCADOR, perfilCodigoDeMetadata } from "../utils/perfil"
@@ -366,10 +366,39 @@ export function SpectrumProvider({ children }) {
     setAdminData(getAdminData())
   }, [])
 
-  const criarSubadmin = useCallback((payload) => {
-    createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1 })
+  const editarInstituicao = useCallback((instituicaoId, dados) => {
+    editarInstituicaoStore(instituicaoId, dados)
     setAdminData(getAdminData())
   }, [])
+
+  const criarSubadmin = useCallback(
+    async (payload) => {
+      if (isSupabaseConfigured() && supabase) {
+        const senhaLimpa = payload.senha || ""
+        if (senhaLimpa.length < 6) {
+          toast("A senha deve ter no mínimo 6 caracteres (exigência do Supabase).", "erro")
+          return false
+        }
+
+        const res = await cadastroSupabase({
+          nome: payload.nome,
+          email: payload.email,
+          senha: senhaLimpa,
+          papel: "subadmin",
+          escola: payload.instituicaoId,
+        })
+
+        if (!res?.ok) {
+          return false
+        }
+      }
+
+      createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1 })
+      setAdminData(getAdminData())
+      return true
+    },
+    [cadastroSupabase, toast],
+  )
 
   const criarUsuarioInstituicao = useCallback((payload) => {
     createUsuarioInstituicao(payload)
@@ -384,6 +413,64 @@ export function SpectrumProvider({ children }) {
   const enviarNotificacaoAdmin = useCallback((payload) => {
     enviarNotificacao(payload)
     setAdminData(getAdminData())
+  }, [])
+
+  const atualizarStatusBoleto = useCallback((boletoId, status) => {
+    atualizarStatusBoletoApi(boletoId, status)
+    setAdminData(getAdminData())
+  }, [])
+
+  const desabilitarInstituicaoFn = useCallback((instituicaoId) => {
+    desabilitarInstituicao(instituicaoId)
+    setAdminData(getAdminData())
+  }, [])
+
+  const habilitarInstituicaoFn = useCallback((instituicaoId) => {
+    habilitarInstituicao(instituicaoId)
+    setAdminData(getAdminData())
+  }, [])
+
+  const desabilitarUsuarioFn = useCallback((usuarioId) => {
+    desabilitarUsuario(usuarioId)
+    setAdminData(getAdminData())
+  }, [])
+
+  const habilitarUsuarioFn = useCallback((usuarioId) => {
+    habilitarUsuario(usuarioId)
+    setAdminData(getAdminData())
+  }, [])
+
+  const criarBoletoFn = useCallback((payload) => {
+    criarBoleto(payload)
+    setAdminData(getAdminData())
+  }, [])
+
+  const deletarBoletoFn = useCallback((boletoId) => {
+    deletarBoleto(boletoId)
+    setAdminData(getAdminData())
+  }, [])
+
+  const deletarUsuarioFn = useCallback((usuarioId) => {
+    deletarUsuario(usuarioId)
+    setAdminData(getAdminData())
+  }, [])
+
+  const editarUsuarioFn = useCallback((usuarioId, dados) => {
+    editarUsuario(usuarioId, dados)
+    setAdminData(getAdminData())
+  }, [])
+
+  const deletarInstituicaoFn = useCallback((instituicaoId) => {
+    deletarInstituicao(instituicaoId)
+    setAdminData(getAdminData())
+  }, [])
+
+  const atualizarTokensCohere = useCallback(async () => {
+    const tokens = await obterTokensCohere()
+    const data = getAdminData()
+    data.iaMetrics.totalTokens = tokens
+    sessionStorage.setItem("spectrum_admin_data_v1", JSON.stringify(data))
+    setAdminData(data)
   }, [])
 
   const value = useMemo(
@@ -410,10 +497,22 @@ export function SpectrumProvider({ children }) {
       verLaudoAluno,
       adminData,
       criarInstituicao,
+      editarInstituicao,
       criarSubadmin,
       criarUsuarioInstituicao,
       atualizarLicencasUsuario,
       enviarNotificacaoAdmin,
+      atualizarStatusBoleto,
+      desabilitarInstituicao: desabilitarInstituicaoFn,
+      habilitarInstituicao: habilitarInstituicaoFn,
+      desabilitarUsuario: desabilitarUsuarioFn,
+      habilitarUsuario: habilitarUsuarioFn,
+      criarBoleto: criarBoletoFn,
+      deletarBoleto: deletarBoletoFn,
+      deletarUsuario: deletarUsuarioFn,
+      editarUsuario: editarUsuarioFn,
+      deletarInstituicao: deletarInstituicaoFn,
+      atualizarTokensCohere,
       trialUso,
       trialLimites,
       isTrialAtivo,
@@ -448,6 +547,11 @@ export function SpectrumProvider({ children }) {
       criarUsuarioInstituicao,
       atualizarLicencasUsuario,
       enviarNotificacaoAdmin,
+      atualizarStatusBoleto,
+      desabilitarInstituicaoFn,
+      habilitarInstituicaoFn,
+      desabilitarUsuarioFn,
+      habilitarUsuarioFn,
       trialUso,
       trialLimites,
       isTrialAtivo,
