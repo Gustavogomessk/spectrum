@@ -3,7 +3,6 @@ import { useSpectrum } from "../context/SpectrumContext"
 import Sidebar from "../components/layout/Sidebar"
 import Topbar from "../components/layout/Topbar"
 import MobileOverlay from "../components/layout/MobileOverlay"
-import ToastContainer from "../components/ui/ToastContainer"
 import DashboardSection from "../components/sections/DashboardSection"
 import AdaptarSection from "../components/sections/AdaptarSection"
 import HistoricoSection from "../components/sections/HistoricoSection"
@@ -97,7 +96,6 @@ export default function AppShell() {
         </main>
       </div>
 
-      <ToastContainer toasts={toasts} />
       <PlanosPopup aberto={planosPopup.aberto} motivo={planosPopup.motivo} onFechar={fecharPlanosPopup} />
     </>
   )

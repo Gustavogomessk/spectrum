@@ -39,7 +39,13 @@ export const SECOES_SO_EDUCADOR = new Set(["dashboard", "adaptar", "historico", 
  */
 export function perfilCodigoDeMetadata(meta) {
   if (!meta || typeof meta !== "object") return PERFIL.PROFESSOR
-  const raw = (meta.funcao || meta.perfil || meta.papel || "").toString().toLowerCase()
+  const rawPapel = (meta.papel || "").toString().toLowerCase()
+  const rawFuncao = (meta.funcao || "").toString().toLowerCase()
+  const rawPerfil = (meta.perfil || "").toString().toLowerCase()
+  const rawRole = (meta.role || "").toString().toLowerCase()
+  const rawRoleName = (meta.roleName || "").toString().toLowerCase()
+  const raw = `${rawPapel} ${rawFuncao} ${rawPerfil} ${rawRole} ${rawRoleName}`
+
   if (raw.includes("admin_master") || raw.includes("adminmaster") || raw.includes("master")) return PERFIL.ADMIN_MASTER
   if (raw.includes("admin_instituicao") || raw.includes("subadmin") || raw.includes("instituicao")) return PERFIL.ADMIN_INSTITUICAO
   if (raw.includes("secret")) return PERFIL.SECRETARIA
