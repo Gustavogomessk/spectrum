@@ -108,7 +108,7 @@ export default function LoginPage() {
             </p>
           )}
 
-          <div className="perfil-tabs" role="tablist" aria-label="Tipo de perfil">
+         {/* <div className="perfil-tabs" role="tablist" aria-label="Tipo de perfil">
             <button
               type="button"
               className={`tab-btn ${perfilRole === "professor" ? "ativo" : ""}`}
@@ -154,7 +154,7 @@ export default function LoginPage() {
             >
               Admin Master
             </button>
-          </div>
+         </div> */}
 
           <form onSubmit={onSubmit} noValidate>
             <label className="campo-label" htmlFor="email">

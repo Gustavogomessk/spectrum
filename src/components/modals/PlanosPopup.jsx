@@ -30,7 +30,14 @@ export default function PlanosPopup({ aberto, onFechar, motivo }) {
           <button type="button" className="btn btn-secundario" onClick={onFechar}>
             Fechar
           </button>
-          <button type="button" className="btn btn-primario" onClick={onFechar}>
+          <button
+            type="button"
+            className="btn btn-primario"
+            onClick={() => window.open(
+              "https://wa.me/5511995347709?text=Olá,%20tudo%20bem?%20Gostei%20do%20sistema%20e%20gostaria%20de%20realizar%20algumas%20adaptações.%20Podemos%20conversar?",
+              "_blank"
+            )}
+          >
             Quero assinar
           </button>
         </div>
