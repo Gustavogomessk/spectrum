@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react"
-import { useNeuroInclude } from "../../context/NeuroIncludeContext"
+import { useSpectrum } from "../../context/SpectrumContext"
 import { adaptarMaterialCohere } from "../../services/cohere"
 import { extrairTextoPdf } from "../../services/pdfText"
+import { supabase, isSupabaseConfigured } from "../../services/supabaseClient"
 import { markdownParaHTML } from "../../utils/markdown"
 import { gerarFallbackAdaptacao } from "../../utils/fallbackAdaptacao"
 import { badgeDiag, corAvatar } from "../../utils/badges"
 import UploadZone from "../upload/UploadZone"
+import { sanitizeStorageSegment } from "../../services/files"
+import AppIcon from "../ui/AppIcon"
+import { Clipboard, Download, FileText, Sparkles, Upload, User } from "lucide-react"
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
@@ -18,7 +22,7 @@ function formatarTamanho(bytes) {
 }
 
 export default function AdaptarSection({ active }) {
-  const { alunos, toast, salvarMaterialApi } = useNeuroInclude()
+  const { alunos, toast, salvarMaterialApi, usuario, isTrialAtivo, trialUso, trialLimites, registrarUsoTrial } = useSpectrum()
 
   const [arquivo, setArquivo] = useState(null)
   const [selecionados, setSelecionados] = useState(() => new Set())
@@ -79,6 +83,7 @@ export default function AdaptarSection({ active }) {
       toast("Selecione um aluno.", "erro")
       return
     }
+    if (!registrarUsoTrial("adaptacao")) return
 
     setAdaptando(true)
     setResultado((r) => ({ ...r, visivel: false }))
@@ -132,6 +137,25 @@ export default function AdaptarSection({ active }) {
       })
 
       const nomeSemExt = nomeBase.replace(/\.pdf$/i, "")
+      let pdfOriginalPath = null
+      let pdfAdaptadoPath = null
+
+      // Salva original e versão adaptada no Storage (quando Supabase estiver ativo)
+      if (isSupabaseConfigured() && supabase && usuario?.id) {
+        const schoolId = usuario.schoolId || "trial"
+        const uid = usuario.id
+        const base = crypto.randomUUID()
+        pdfOriginalPath = `escola-${schoolId}/user-${uid}/materiais/${base}-original-${sanitizeStorageSegment(nomeBase)}`
+        pdfAdaptadoPath = `escola-${schoolId}/user-${uid}/materiais/${base}-adaptado-${sanitizeStorageSegment(nomeSemExt)}.html`
+
+        const { error: up1 } = await supabase.storage.from("uploads-files").upload(pdfOriginalPath, arquivo, { upsert: true, contentType: "application/pdf" })
+        if (up1) throw up1
+
+        const htmlBlob = new Blob([`<div>${html}</div>`], { type: "text/html;charset=utf-8" })
+        const { error: up2 } = await supabase.storage.from("uploads-files").upload(pdfAdaptadoPath, htmlBlob, { upsert: true, contentType: "text/html" })
+        if (up2) throw up2
+      }
+
       await salvarMaterialApi({
         nome: nomeSemExt,
         aluno: aluno.nome,
@@ -139,10 +163,12 @@ export default function AdaptarSection({ active }) {
         conteudo_html: html,
         aluno_id: /^[0-9a-f-]{36}$/i.test(String(aluno.id)) ? aluno.id : null,
         pdf_original_nome: nomeBase,
-        pdf_adaptado_nome: `${nomeSemExt}-adaptado.pdf`,
+        pdf_adaptado_nome: `${nomeSemExt}-adaptado.html`,
+        pdf_original_path: pdfOriginalPath,
+        pdf_adaptado_path: pdfAdaptadoPath,
       })
 
-      toast("Material adaptado com sucesso! ✅", "sucesso")
+      toast("Material adaptado com sucesso!", "sucesso")
     } catch (e) {
       console.error(e)
       toast(e.message || "Erro na adaptação.", "erro")
@@ -171,11 +197,16 @@ export default function AdaptarSection({ active }) {
     <section className={`secao ${active ? "ativa" : ""}`} id="secao-adaptar" aria-label="Adaptação de material">
       <div className="secao-corpo">
         <h2 className="sr-only">Adaptar novo material</h2>
+        {isTrialAtivo ? (
+          <p className="texto-mudo mb-2">
+            Plano trial: <strong>{trialUso.adaptacoes}</strong> de <strong>{trialLimites.adaptacoes}</strong> adaptações usadas.
+          </p>
+        ) : null}
 
         <div className="card mb-3" id="step-upload">
           <div className="card-cabecalho">
             <span style={{ fontSize: "1.2rem" }} aria-hidden="true">
-              📤
+              <AppIcon icon={Upload} size={18} />
             </span>
             <span className="card-titulo">Passo 1 — Enviar PDF</span>
             <span className="badge badge-azul">Obrigatório</span>
@@ -187,7 +218,7 @@ export default function AdaptarSection({ active }) {
 
             <div className={`arquivo-selecionado ${arquivo ? "visivel" : ""}`} aria-live="polite">
               <div className="arquivo-icone" aria-hidden="true">
-                📄
+                <AppIcon icon={FileText} size={18} />
               </div>
               <div className="arquivo-info">
                 <div className="arquivo-nome">{arquivo?.name || "—"}</div>
@@ -203,7 +234,7 @@ export default function AdaptarSection({ active }) {
         <div className="card mb-3" id="step-aluno">
           <div className="card-cabecalho">
             <span style={{ fontSize: "1.2rem" }} aria-hidden="true">
-              👤
+              <AppIcon icon={User} size={18} />
             </span>
             <span className="card-titulo">Passo 2 — Selecionar Aluno(s)</span>
           </div>
@@ -240,7 +271,7 @@ export default function AdaptarSection({ active }) {
                       <span className={`badge ${badgeDiag(aluno.diagnostico)}`}>{aluno.diagnostico}</span>
                       {aluno.laudo ? (
                         <span>
-                          &nbsp;<span className="badge badge-verde">📋 Laudo</span>
+                          &nbsp;<span className="badge badge-verde">Laudo</span>
                         </span>
                       ) : null}
                     </div>
@@ -254,7 +285,7 @@ export default function AdaptarSection({ active }) {
         <div className="card mb-3">
           <div className="card-cabecalho">
             <span style={{ fontSize: "1.2rem" }} aria-hidden="true">
-              📝
+              <AppIcon icon={FileText} size={18} />
             </span>
             <span className="card-titulo">Passo 3 — Observações (opcional)</span>
           </div>
@@ -298,7 +329,10 @@ export default function AdaptarSection({ active }) {
           onClick={iniciarAdaptacao}
           aria-label="Iniciar adaptação com IA"
         >
-          {adaptando ? "Adaptando..." : "✨ Adaptar com IA"}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+            <AppIcon icon={Sparkles} size={18} />
+            {adaptando ? "Adaptando..." : "Adaptar com IA"}
+          </span>
         </button>
 
         <div className={`progresso-ia card mt-3 ${progresso.visivel ? "visivel" : ""}`} aria-live="polite" aria-label="Progresso da adaptação">
@@ -316,7 +350,7 @@ export default function AdaptarSection({ active }) {
         <div className={`resultado-wrapper mt-3 ${resultado.visivel ? "visivel" : ""}`} aria-live="polite">
           <div className="resultado-cabecalho" role="status">
             <div className="resultado-icone" aria-hidden="true">
-              ✅
+              <AppIcon icon={Sparkles} size={18} />
             </div>
             <div>
               <div className="resultado-titulo">Material adaptado com sucesso!</div>
@@ -326,17 +360,23 @@ export default function AdaptarSection({ active }) {
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
               <button type="button" className="btn btn-sucesso btn-sm" onClick={baixarPDF} aria-label="Baixar PDF do material adaptado">
-                ⬇ Baixar PDF
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                  <AppIcon icon={Download} size={16} />
+                  Baixar
+                </span>
               </button>
               <button type="button" className="btn btn-secundario btn-sm" onClick={copiarConteudo} aria-label="Copiar conteúdo adaptado">
-                📋 Copiar
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                  <AppIcon icon={Clipboard} size={16} />
+                  Copiar
+                </span>
               </button>
             </div>
           </div>
 
           <div className="material-adaptado">
             <div className="material-cabecalho" aria-label="Controles do material">
-              <span>📄</span> <span id="nome-material-resultado">{resultado.nomeArquivo}</span>
+              <AppIcon icon={FileText} size={18} /> <span id="nome-material-resultado">{resultado.nomeArquivo}</span>
               <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
                 <span className="badge badge-azul" id="badge-perfil-resultado">
                   {resultado.perfilLabel}

@@ -1,4 +1,6 @@
 import { useId, useRef, useState } from "react"
+import AppIcon from "../ui/AppIcon"
+import { FolderUp } from "lucide-react"
 
 export default function UploadZone({ onFile }) {
   const [drag, setDrag] = useState(false)
@@ -35,7 +37,7 @@ export default function UploadZone({ onFile }) {
         onDrop={handleDrop}
       >
         <div className="upload-icone" aria-hidden="true">
-          📁
+          <AppIcon icon={FolderUp} size={22} />
         </div>
         <div className="upload-titulo">Arraste o PDF aqui ou clique para selecionar</div>
         <div className="upload-sub">O arquivo será lido pela IA para adaptação</div>

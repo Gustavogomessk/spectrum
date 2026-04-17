@@ -28,5 +28,25 @@ export function markdownParaHTML(md) {
 }
 
 export function formatarMensagemChat(texto) {
-  return texto.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br />")
+  return markdownParaHTMLChat(texto)
+}
+
+export function markdownParaHTMLChat(md) {
+  if (!md) return ""
+  // Versão "chat": mantém quebras de linha e suporta listas/títulos básicos.
+  let html = md
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/^\s*[-•]\s+(.+)$/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>\n?)+/g, (match) => "<ul>" + match + "</ul>")
+
+  // Parágrafos e quebras
+  html = html
+    .split(/\n{2,}/)
+    .map((p) => `<p>${p.replace(/\n/g, "<br />")}</p>`)
+    .join("")
+
+  return html
 }

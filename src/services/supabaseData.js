@@ -55,10 +55,10 @@ const DEMO_MATERIAIS = [
 ]
 
 function storageKeyAlunos(uid) {
-  return `neuroinclude_alunos_${uid}`
+  return `spectrum_alunos_${uid}`
 }
 function storageKeyMateriais(uid) {
-  return `neuroinclude_materiais_${uid}`
+  return `spectrum_materiais_${uid}`
 }
 
 export async function fetchAlunos(userId) {
@@ -83,6 +83,7 @@ export async function fetchAlunos(userId) {
     diagnostico: row.diagnostico,
     obs: row.observacoes || "",
     laudo: Boolean(row.laudo_url),
+    laudo_url: row.laudo_url || null,
     materiais: row.materiais_count ?? 0,
   }))
 }
@@ -116,6 +117,8 @@ export async function fetchMateriais(userId) {
       conteudo_html: row.conteudo_html,
       pdf_original_nome: row.pdf_original_nome || "",
       pdf_adaptado_nome: row.pdf_adaptado_nome || "",
+      pdf_original_path: row.pdf_original_path || null,
+      pdf_adaptado_path: row.pdf_adaptado_path || null,
     }
   })
 }
@@ -154,6 +157,52 @@ export async function updateAluno(userId, aluno) {
     .select()
     .single()
 
+  if (error) throw error
+  return {
+    id: data.id,
+    matricula: data.matricula || "",
+    nome: data.nome,
+    nascimento: data.nascimento || "",
+    diagnostico: data.diagnostico,
+    obs: data.observacoes || "",
+    laudo: Boolean(data.laudo_url),
+    materiais: data.materiais_count ?? 0,
+  }
+}
+
+export async function patchAluno(userId, alunoId, fields) {
+  if (!alunoId) throw new Error("missing_aluno_id")
+  const f = fields || {}
+
+  if (!isSupabaseConfigured() || !supabase) {
+    const list = await fetchAlunos(userId)
+    const next = list.map((a) => {
+      if (String(a.id) !== String(alunoId)) return a
+      return {
+        ...a,
+        ...(f.matricula !== undefined ? { matricula: f.matricula ?? "" } : null),
+        ...(f.nome !== undefined ? { nome: f.nome } : null),
+        ...(f.nascimento !== undefined ? { nascimento: f.nascimento || "" } : null),
+        ...(f.diagnostico !== undefined ? { diagnostico: f.diagnostico } : null),
+        ...(f.obs !== undefined ? { obs: f.obs || "" } : null),
+        ...(f.laudo !== undefined ? { laudo: Boolean(f.laudo) } : null),
+      }
+    })
+    sessionStorage.setItem(storageKeyAlunos(userId), JSON.stringify(next))
+    return next.find((a) => String(a.id) === String(alunoId))
+  }
+
+  const update = {}
+  if (f.matricula !== undefined) update.matricula = f.matricula || null
+  if (f.nome !== undefined) update.nome = f.nome
+  if (f.nascimento !== undefined) update.nascimento = f.nascimento || null
+  if (f.diagnostico !== undefined) update.diagnostico = f.diagnostico
+  if (f.obs !== undefined) update.observacoes = f.obs || null
+  if (f.laudo_url !== undefined) update.laudo_url = f.laudo_url || null
+
+  if (Object.keys(update).length === 0) return null
+
+  const { data, error } = await supabase.from("alunos").update(update).eq("id", alunoId).select().single()
   if (error) throw error
   return {
     id: data.id,
@@ -250,6 +299,8 @@ export async function insertMaterial(userId, row) {
       conteudo_html: row.conteudo_html || null,
       pdf_original_nome: row.pdf_original_nome || null,
       pdf_adaptado_nome: row.pdf_adaptado_nome || null,
+      pdf_original_path: row.pdf_original_path || null,
+      pdf_adaptado_path: row.pdf_adaptado_path || null,
     })
     .select()
     .single()
@@ -264,6 +315,8 @@ export async function insertMaterial(userId, row) {
     conteudo_html: data.conteudo_html,
     pdf_original_nome: data.pdf_original_nome || "",
     pdf_adaptado_nome: data.pdf_adaptado_nome || "",
+    pdf_original_path: data.pdf_original_path || null,
+    pdf_adaptado_path: data.pdf_adaptado_path || null,
   }
 }
 

@@ -1,9 +1,13 @@
 import { useState } from "react"
-import { useNeuroInclude } from "../../context/NeuroIncludeContext"
+import { useSpectrum } from "../../context/SpectrumContext"
 import { badgeDiag } from "../../utils/badges"
+import { downloadString, wrapHtmlDocument } from "../../utils/download"
+import { supabase } from "../../services/supabaseClient"
+import AppIcon from "../ui/AppIcon"
+import { Download } from "lucide-react"
 
 export default function HistoricoSection({ active }) {
-  const { materiais, toast, removerMaterialApi } = useNeuroInclude()
+  const { materiais, toast, removerMaterialApi } = useSpectrum()
   const [q, setQ] = useState("")
 
   const filtrados = materiais.filter((m) => {
@@ -26,6 +30,34 @@ export default function HistoricoSection({ active }) {
     }
   }
 
+  function baixar(mat) {
+    const nomeBase = (mat?.nome || "material").toString().trim() || "material"
+    const filename = `${nomeBase}-adaptado.html`.replace(/[\\/:*?"<>|]+/g, "-")
+    const html = wrapHtmlDocument({
+      title: `Material adaptado — ${nomeBase}`,
+      bodyHtml: `<h1>${nomeBase}</h1><div class="meta">Aluno: ${mat.aluno || "—"} • Perfil: ${mat.perfil || "—"} • Data: ${mat.data || "—"}</div>${mat.conteudo_html || "<p>(Sem conteúdo salvo)</p>"}`,
+    })
+    downloadString(filename, html, "text/html;charset=utf-8")
+    toast("Download iniciado (HTML).", "sucesso")
+  }
+
+  async function abrirPath(path) {
+    if (!supabase) {
+      toast("Supabase não configurado.", "erro")
+      return
+    }
+    if (!path) {
+      toast("Arquivo não disponível para este material.", "info")
+      return
+    }
+    const { data, error } = await supabase.storage.from("uploads-files").createSignedUrl(path, 180)
+    if (error || !data?.signedUrl) {
+      toast("Não foi possível gerar link seguro.", "erro")
+      return
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer")
+  }
+
   return (
     <section className={`secao ${active ? "ativa" : ""}`} id="secao-historico" aria-label="Histórico de materiais adaptados">
       <div className="secao-corpo">
@@ -35,7 +67,7 @@ export default function HistoricoSection({ active }) {
             Cada registro associa o <strong>PDF original</strong> enviado pelo professor ao <strong>material adaptado</strong> gerado pela IA (nomes de arquivo; download completo no backend em evolução).
           </p>
           <div className="card-cabecalho">
-            <span className="card-titulo">📄 Todos os Materiais Adaptados</span>
+            <span className="card-titulo">Todos os Materiais Adaptados</span>
             <input
               type="search"
               className="campo"
@@ -70,7 +102,7 @@ export default function HistoricoSection({ active }) {
                   filtrados.map((mat) => (
                     <tr key={mat.id}>
                       <td>
-                        <span style={{ fontWeight: 600 }}>📄 {mat.nome}</span>
+                        <span style={{ fontWeight: 600 }}>{mat.nome}</span>
                       </td>
                       <td>
                         <span className="badge badge-cinza">{mat.pdf_original_nome || "—"}</span>
@@ -85,13 +117,22 @@ export default function HistoricoSection({ active }) {
                       <td>{mat.data}</td>
                       <td>
                         <div className="acoes-td">
+                          <button type="button" className="btn btn-secundario btn-sm" onClick={() => abrirPath(mat.pdf_original_path)} aria-label={`Ver original ${mat.nome}`}>
+                            Ver original
+                          </button>
+                          <button type="button" className="btn btn-secundario btn-sm" onClick={() => abrirPath(mat.pdf_adaptado_path)} aria-label={`Ver adaptado ${mat.nome}`}>
+                            Ver adaptado
+                          </button>
                           <button
                             type="button"
                             className="btn btn-secundario btn-sm"
-                            onClick={() => toast("Download em desenvolvimento.", "info")}
+                            onClick={() => baixar(mat)}
                             aria-label={`Baixar ${mat.nome}`}
                           >
-                            ⬇ Baixar
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                              <AppIcon icon={Download} size={16} />
+                              Baixar
+                            </span>
                           </button>
                           <button type="button" className="btn btn-perigo btn-sm" onClick={() => excluir(mat.id)} aria-label={`Excluir ${mat.nome}`}>
                             Excluir

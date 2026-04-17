@@ -7,24 +7,31 @@ import {
   fetchMateriais,
   insertAluno,
   insertMaterial,
+  patchAluno,
   updateAluno,
 } from "../services/supabaseData"
+import { sanitizeStorageSegment, uploadPdf } from "../services/files"
+import { atualizarLicenca, createInstituicao, createUsuarioInstituicao, enviarNotificacao, getAdminData } from "../services/adminData"
 import { mensagemErroSupabaseAuth } from "../utils/authErrors"
 import { isErroRelacionamentoPostgrest, isErroTabelaAusente, resumoErroSupabase } from "../utils/supabaseErrors"
-import { funcaoMetadataDePapelCadastro, PERFIL, SECOES_SO_EDUCADOR, perfilCodigoDeMetadata } from "../utils/perfil"
+import { funcaoMetadataDePapelCadastro, isAdmin, PERFIL, SECOES_SO_EDUCADOR, perfilCodigoDeMetadata } from "../utils/perfil"
 
-const NeuroIncludeContext = createContext(null)
+const SpectrumContext = createContext(null)
 
 const PAPEL_MAP = {
   professor: "Professora",
   psico: "Psicopedagoga",
   secretaria: "Secretaria",
+  admin_master: "Admin Master",
+  admin_instituicao: "SubAdmin Instituição",
 }
 
 const NOME_MAP = {
   professor: "Prof. Ana Lima",
   psico: "Psicopedagoga Carla",
   secretaria: "Sec. João Pedro",
+  admin_master: "Admin Master",
+  admin_instituicao: "SubAdmin Instituição",
 }
 
 function iniciaisDe(nome) {
@@ -36,7 +43,7 @@ function iniciaisDe(nome) {
     .toUpperCase()
 }
 
-export function NeuroIncludeProvider({ children }) {
+export function SpectrumProvider({ children }) {
   const [usuario, setUsuario] = useState(null)
   const [perfilRole, setPerfilRole] = useState("professor")
   const [alunos, setAlunos] = useState([])
@@ -44,6 +51,9 @@ export function NeuroIncludeProvider({ children }) {
   const [activeSection, setActiveSection] = useState("dashboard")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [toasts, setToasts] = useState([])
+  const [adminData, setAdminData] = useState(() => getAdminData())
+  const [trialUso, setTrialUso] = useState({ adaptacoes: 0, chatPerguntas: 0 })
+  const [planosPopup, setPlanosPopup] = useState({ aberto: false, motivo: "" })
   const toastSyncJaExibido = useRef(false)
 
   const userId = usuario?.id || "local-demo"
@@ -56,6 +66,57 @@ export function NeuroIncludeProvider({ children }) {
     }, 3500)
   }, [])
 
+  const trialKey = `trial_usage_${userId}`
+  const trialLimites = { adaptacoes: 5, chatPerguntas: 5 }
+  const isTrialAtivo = Boolean(usuario && !usuario.schoolId && !isAdmin(usuario))
+
+  useEffect(() => {
+    if (!usuario) return
+    const raw = sessionStorage.getItem(trialKey)
+    if (!raw) {
+      setTrialUso({ adaptacoes: 0, chatPerguntas: 0 })
+      return
+    }
+    try {
+      setTrialUso(JSON.parse(raw))
+    } catch {
+      setTrialUso({ adaptacoes: 0, chatPerguntas: 0 })
+    }
+  }, [trialKey, usuario])
+
+  const registrarUsoTrial = useCallback(
+    (tipo) => {
+      if (!isTrialAtivo) return true
+      const atual = { ...trialUso }
+      if (tipo === "adaptacao") {
+        if (atual.adaptacoes >= trialLimites.adaptacoes) {
+          setPlanosPopup({ aberto: true, motivo: "Você atingiu 5 adaptações gratuitas no plano trial." })
+          return false
+        }
+        atual.adaptacoes += 1
+      }
+      if (tipo === "chat") {
+        if (atual.chatPerguntas >= trialLimites.chatPerguntas) {
+          setPlanosPopup({ aberto: true, motivo: "Você atingiu 5 perguntas com IA no plano trial." })
+          return false
+        }
+        atual.chatPerguntas += 1
+      }
+      setTrialUso(atual)
+      sessionStorage.setItem(trialKey, JSON.stringify(atual))
+      return true
+    },
+    [isTrialAtivo, trialUso, trialKey],
+  )
+
+  const abrirPlanosPopup = useCallback((motivo) => {
+    setPlanosPopup({ aberto: true, motivo: motivo || "" })
+  }, [])
+
+  const fecharPlanosPopup = useCallback(() => {
+    setPlanosPopup({ aberto: false, motivo: "" })
+  }, [])
+
   const refresh = useCallback(async () => {
     if (!usuario) return
     try {
@@ -64,7 +125,7 @@ export function NeuroIncludeProvider({ children }) {
       setMateriais(m)
       toastSyncJaExibido.current = false
     } catch (e) {
-      console.error("[NeuroInclude sync]", resumoErroSupabase(e), e)
+      console.error("[Spectrum sync]", resumoErroSupabase(e), e)
       if (isErroTabelaAusente(e)) {
         if (!toastSyncJaExibido.current) {
           toastSyncJaExibido.current = true
@@ -91,6 +152,14 @@ export function NeuroIncludeProvider({ children }) {
     if (!usuario) return
     if (usuario.perfilCodigo === PERFIL.SECRETARIA && SECOES_SO_EDUCADOR.has(activeSection)) {
       setActiveSection("alunos")
+      return
+    }
+    if (usuario.perfilCodigo === PERFIL.ADMIN_MASTER && activeSection === "dashboard") {
+      setActiveSection("admin-global")
+      return
+    }
+    if (usuario.perfilCodigo === PERFIL.ADMIN_INSTITUICAO && activeSection === "dashboard") {
+      setActiveSection("admin-instituicao")
     }
   }, [usuario, activeSection])
 
@@ -106,6 +175,7 @@ export function NeuroIncludeProvider({ children }) {
         nome: meta.nome || s.user.email?.split("@")[0] || "Usuário",
         papel: meta.papel || "Educador(a)",
         perfilCodigo: perfilCodigoDeMetadata(meta),
+        schoolId: meta.schoolId || null,
         iniciais: iniciaisDe(meta.nome || s.user.email || "NI"),
       })
     })
@@ -121,6 +191,7 @@ export function NeuroIncludeProvider({ children }) {
         nome: meta.nome || session.user.email?.split("@")[0] || "Usuário",
         papel: meta.papel || "Educador(a)",
         perfilCodigo: perfilCodigoDeMetadata(meta),
+        schoolId: meta.schoolId || null,
         iniciais: iniciaisDe(meta.nome || session.user.email || "NI"),
       })
     })
@@ -140,10 +211,11 @@ export function NeuroIncludeProvider({ children }) {
         nome,
         papel: PAPEL_MAP[role] || PAPEL_MAP.professor,
         perfilCodigo: role in PAPEL_MAP ? role : PERFIL.PROFESSOR,
+        schoolId: role === PERFIL.ADMIN_INSTITUICAO ? "inst-1" : null,
         iniciais: iniciaisDe(nome),
       })
       setPerfilRole(role)
-      toast(`Bem-vindo(a), ${nome}! 👋`, "sucesso")
+      toast(`Bem-vindo(a), ${nome}!`, "sucesso")
     },
     [toast],
   )
@@ -227,14 +299,42 @@ export function NeuroIncludeProvider({ children }) {
 
   const salvarAlunoApi = useCallback(
     async (payload) => {
+      const schoolId = usuario?.schoolId || "trial"
       if (payload.id) {
         await updateAluno(userId, { ...payload, id: payload.id })
+        if (payload.laudoFile) {
+          const storagePath = `escola-${schoolId}/user-${userId}/aluno-${payload.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
+          const row = await uploadPdf({ file: payload.laudoFile, schoolId: usuario?.schoolId || null, userId, storagePath })
+          await patchAluno(userId, payload.id, { laudo_url: row.storage_path })
+        }
       } else {
-        await insertAluno(userId, payload)
+        const created = await insertAluno(userId, payload)
+        if (payload.laudoFile && created?.id) {
+          const storagePath = `escola-${schoolId}/user-${userId}/aluno-${created.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
+          const row = await uploadPdf({ file: payload.laudoFile, schoolId: usuario?.schoolId || null, userId, storagePath })
+          await patchAluno(userId, created.id, { laudo_url: row.storage_path })
+        }
       }
       await refresh()
     },
-    [userId, refresh],
+    [userId, refresh, usuario?.schoolId],
+  )
+
+  const verLaudoAluno = useCallback(
+    async (alunoId) => {
+      if (!supabase) throw new Error("supabase_not_configured")
+      const aluno = alunos.find((a) => String(a.id) === String(alunoId))
+      const path = aluno?.laudo_url
+      if (!path) throw new Error("no_laudo")
+
+      // Dev: Vite não serve /api (Vercel Functions). Preferimos assinar direto no client.
+      const { data, error } = await supabase.storage.from("uploads-files").createSignedUrl(path, 180)
+      if (error) {
+        throw error
+      }
+      window.open(data?.signedUrl, "_blank", "noopener,noreferrer")
+    },
+    [alunos],
   )
 
   const removerAlunoApi = useCallback(
@@ -261,6 +361,31 @@ export function NeuroIncludeProvider({ children }) {
     [userId, refresh],
   )
 
+  const criarInstituicao = useCallback((payload) => {
+    createInstituicao(payload)
+    setAdminData(getAdminData())
+  }, [])
+
+  const criarSubadmin = useCallback((payload) => {
+    createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1 })
+    setAdminData(getAdminData())
+  }, [])
+
+  const criarUsuarioInstituicao = useCallback((payload) => {
+    createUsuarioInstituicao(payload)
+    setAdminData(getAdminData())
+  }, [])
+
+  const atualizarLicencasUsuario = useCallback((usuarioId, licencas) => {
+    atualizarLicenca(usuarioId, licencas)
+    setAdminData(getAdminData())
+  }, [])
+
+  const enviarNotificacaoAdmin = useCallback((payload) => {
+    enviarNotificacao(payload)
+    setAdminData(getAdminData())
+  }, [])
+
   const value = useMemo(
     () => ({
       usuario,
@@ -282,6 +407,20 @@ export function NeuroIncludeProvider({ children }) {
       removerAlunoApi,
       salvarMaterialApi,
       removerMaterialApi,
+      verLaudoAluno,
+      adminData,
+      criarInstituicao,
+      criarSubadmin,
+      criarUsuarioInstituicao,
+      atualizarLicencasUsuario,
+      enviarNotificacaoAdmin,
+      trialUso,
+      trialLimites,
+      isTrialAtivo,
+      registrarUsoTrial,
+      planosPopup,
+      abrirPlanosPopup,
+      fecharPlanosPopup,
       refresh,
       isSupabase: isSupabaseConfigured(),
     }),
@@ -302,15 +441,32 @@ export function NeuroIncludeProvider({ children }) {
       removerAlunoApi,
       salvarMaterialApi,
       removerMaterialApi,
+      verLaudoAluno,
+      adminData,
+      criarInstituicao,
+      criarSubadmin,
+      criarUsuarioInstituicao,
+      atualizarLicencasUsuario,
+      enviarNotificacaoAdmin,
+      trialUso,
+      trialLimites,
+      isTrialAtivo,
+      registrarUsoTrial,
+      planosPopup,
+      abrirPlanosPopup,
+      fecharPlanosPopup,
       refresh,
     ],
   )
 
-  return <NeuroIncludeContext.Provider value={value}>{children}</NeuroIncludeContext.Provider>
+  return <SpectrumContext.Provider value={value}>{children}</SpectrumContext.Provider>
 }
 
-export function useNeuroInclude() {
-  const ctx = useContext(NeuroIncludeContext)
-  if (!ctx) throw new Error("useNeuroInclude fora do provider")
+export function useSpectrum() {
+  const ctx = useContext(SpectrumContext)
+  if (!ctx) throw new Error("useSpectrum fora do provider")
   return ctx
 }
+
+// Compatibilidade temporária para imports antigos.
+export const useNeuroInclude = useSpectrum

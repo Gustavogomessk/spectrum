@@ -1,12 +1,14 @@
 import { useState } from "react"
-import { useNeuroInclude } from "../context/NeuroIncludeContext"
+import { useSpectrum } from "../context/SpectrumContext"
+import AppIcon from "../components/ui/AppIcon"
+import { Bot } from "lucide-react"
 
 export default function LoginPage() {
-  const { loginDemo, loginSupabase, cadastroSupabase, isSupabase, perfilRole, setPerfilRole, toast } = useNeuroInclude()
+  const { loginDemo, loginSupabase, cadastroSupabase, isSupabase, perfilRole, setPerfilRole, toast } = useSpectrum()
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
   const [cadOpen, setCadOpen] = useState(false)
-  const [cad, setCad] = useState({ nome: "", email: "", senha: "", papel: "Professor(a)", escola: "" })
+  const [cad, setCad] = useState({ nome: "", email: "", senha: "" })
   const [carregandoLogin, setCarregandoLogin] = useState(false)
   const [carregandoCadastro, setCarregandoCadastro] = useState(false)
 
@@ -47,8 +49,8 @@ export default function LoginPage() {
           nome: cad.nome.trim(),
           email: cad.email.trim(),
           senha: cad.senha,
-          papel: cad.papel,
-          escola: cad.escola,
+          papel: "Professor(a)",
+          escola: "",
         })
         if (res?.ok) {
           setCadOpen(false)
@@ -56,7 +58,7 @@ export default function LoginPage() {
             setEmail(res.email)
             setSenha("")
           }
-          setCad({ nome: "", email: "", senha: "", papel: "Professor(a)", escola: "" })
+          setCad({ nome: "", email: "", senha: "" })
         }
       } finally {
         setCarregandoCadastro(false)
@@ -74,9 +76,12 @@ export default function LoginPage() {
       </a>
 
       <div id="tela-login" className="tela ativa" role="main" aria-label="Tela de login">
-        <div className="login-hero" role="img" aria-label="Ilustração decorativa NeuroInclude">
+        <div className="login-hero" role="img" aria-label="Ilustração decorativa Spectrum">
           <div className="login-logo logo-animado">
-            🧠 Neuro<span>Include</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+              <AppIcon icon={Bot} size={22} />
+              Spectrum
+            </span>
           </div>
           <p className="login-tagline">IA que adapta materiais acadêmicos para crianças neurodivergentes em segundos.</p>
           <p style={{ fontSize: "0.88rem", opacity: 0.85, marginBottom: "1.5rem", position: "relative", zIndex: 1 }}>
@@ -89,7 +94,7 @@ export default function LoginPage() {
         </div>
 
         <div className="login-form-area" id="login-conteudo">
-          <h1 className="login-titulo">Bem-vindo de volta 👋</h1>
+          <h1 className="login-titulo">Bem-vindo de volta</h1>
           <p className="login-sub">Acesse com seu perfil para continuar</p>
 
           {!isSupabase ? (
@@ -130,6 +135,24 @@ export default function LoginPage() {
               onClick={() => selecionarTab("secretaria")}
             >
               Secretaria
+            </button>
+            <button
+              type="button"
+              className={`tab-btn ${perfilRole === "admin_instituicao" ? "ativo" : ""}`}
+              role="tab"
+              aria-selected={perfilRole === "admin_instituicao"}
+              onClick={() => selecionarTab("admin_instituicao")}
+            >
+              SubAdmin
+            </button>
+            <button
+              type="button"
+              className={`tab-btn ${perfilRole === "admin_master" ? "ativo" : ""}`}
+              role="tab"
+              aria-selected={perfilRole === "admin_master"}
+              onClick={() => selecionarTab("admin_master")}
+            >
+              Admin Master
             </button>
           </div>
 
@@ -202,25 +225,10 @@ export default function LoginPage() {
               </button>
             </div>
             <form className="modal-corpo" onSubmit={criarConta}>
-              <div className="linha-campos">
-                <div>
-                  <label className="campo-label" htmlFor="cad-nome">
-                    Nome
-                  </label>
-                  <input id="cad-nome" type="text" className="campo" placeholder="Seu nome" value={cad.nome} onChange={(e) => setCad((c) => ({ ...c, nome: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="campo-label" htmlFor="cad-papel">
-                    Função
-                  </label>
-                  <select id="cad-papel" className="campo" value={cad.papel} onChange={(e) => setCad((c) => ({ ...c, papel: e.target.value }))}>
-                    <option>Professor(a)</option>
-                    <option>Psicopedagogo(a)</option>
-                    <option>Secretaria</option>
-                    <option>Coordenador(a)</option>
-                  </select>
-                </div>
-              </div>
+              <label className="campo-label" htmlFor="cad-nome">
+                Nome
+              </label>
+              <input id="cad-nome" type="text" className="campo" placeholder="Seu nome" value={cad.nome} onChange={(e) => setCad((c) => ({ ...c, nome: e.target.value }))} />
               <label className="campo-label" htmlFor="cad-email">
                 E-mail institucional
               </label>
@@ -229,10 +237,6 @@ export default function LoginPage() {
                 Senha
               </label>
               <input id="cad-senha" type="password" className="campo" placeholder="Mínimo 8 caracteres" value={cad.senha} onChange={(e) => setCad((c) => ({ ...c, senha: e.target.value }))} />
-              <label className="campo-label" htmlFor="cad-escola">
-                Escola / Instituição
-              </label>
-              <input id="cad-escola" type="text" className="campo" placeholder="Nome da escola" value={cad.escola} onChange={(e) => setCad((c) => ({ ...c, escola: e.target.value }))} />
               <div className="modal-rodape" style={{ border: "none", padding: "1rem 0 0" }}>
                 <button type="button" className="btn btn-secundario" onClick={() => setCadOpen(false)}>
                   Cancelar

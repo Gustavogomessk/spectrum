@@ -1,7 +1,9 @@
-import { useNeuroInclude } from "../../context/NeuroIncludeContext"
+import { useSpectrum } from "../../context/SpectrumContext"
+import AppIcon from "../ui/AppIcon"
+import { Bot, Clock, FileText, Users } from "lucide-react"
 
 export default function DashboardSection({ active, onVerHistorico, onAdaptar }) {
-  const { materiais, alunos } = useNeuroInclude()
+  const { materiais, alunos } = useSpectrum()
   const recentes = materiais.slice(0, 5)
 
   return (
@@ -12,7 +14,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
         <div className="metricas-grid" role="list" aria-label="Métricas da plataforma">
           <div className="metrica-card" role="listitem">
             <div className="metrica-icone" aria-hidden="true">
-              📄
+              <AppIcon icon={FileText} size={20} />
             </div>
             <div className="metrica-label">Materiais Adaptados</div>
             <div className="metrica-valor">{materiais.length}</div>
@@ -20,7 +22,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
           </div>
           <div className="metrica-card" role="listitem">
             <div className="metrica-icone" aria-hidden="true">
-              👥
+              <AppIcon icon={Users} size={20} />
             </div>
             <div className="metrica-label">Alunos Ativos</div>
             <div className="metrica-valor">{alunos.length}</div>
@@ -28,7 +30,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
           </div>
           <div className="metrica-card" role="listitem">
             <div className="metrica-icone" aria-hidden="true">
-              ⏱️
+              <AppIcon icon={Clock} size={20} />
             </div>
             <div className="metrica-label">Tempo Economizado</div>
             <div className="metrica-valor">24h</div>
@@ -36,7 +38,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
           </div>
           <div className="metrica-card" role="listitem">
             <div className="metrica-icone" aria-hidden="true">
-              🤖
+              <AppIcon icon={Bot} size={20} />
             </div>
             <div className="metrica-label">IA (Cohere)</div>
             <div className="metrica-valor">✓</div>
@@ -107,7 +109,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
                 }}
               >
                 <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }} aria-hidden="true">
-                  📤
+                  <AppIcon icon={FileText} size={28} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>1. Envie o PDF</div>
                 <div className="texto-mudo" style={{ fontSize: "0.8rem" }}>
@@ -125,7 +127,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
                 }}
               >
                 <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }} aria-hidden="true">
-                  👤
+                  <AppIcon icon={Users} size={28} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>2. Escolha o aluno</div>
                 <div className="texto-mudo" style={{ fontSize: "0.8rem" }}>
@@ -143,7 +145,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
                 }}
               >
                 <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }} aria-hidden="true">
-                  ✨
+                  <AppIcon icon={Bot} size={28} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>3. IA adapta</div>
                 <div className="texto-mudo" style={{ fontSize: "0.8rem" }}>
@@ -153,7 +155,7 @@ export default function DashboardSection({ active, onVerHistorico, onAdaptar }) 
             </div>
             <div className="mt-2">
               <button type="button" className="btn btn-primario" onClick={onAdaptar}>
-                ✨ Adaptar Material Agora
+                Adaptar Material Agora
               </button>
             </div>
           </div>

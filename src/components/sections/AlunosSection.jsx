@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNeuroInclude } from "../../context/NeuroIncludeContext"
+import { useSpectrum } from "../../context/SpectrumContext"
 import { badgeDiag, corAvatar } from "../../utils/badges"
 import { isSecretaria } from "../../utils/perfil"
 import ModalAluno from "../modals/ModalAluno"
@@ -14,7 +14,7 @@ function calcularIdade(nascimento) {
 }
 
 export default function AlunosSection({ active }) {
-  const { usuario, alunos, toast, salvarAlunoApi, removerAlunoApi } = useNeuroInclude()
+  const { usuario, alunos, toast, salvarAlunoApi, removerAlunoApi, verLaudoAluno } = useSpectrum()
   const apenasLaudo = isSecretaria(usuario)
   const [q, setQ] = useState("")
   const [modal, setModal] = useState({ aberto: false, editando: null })
@@ -121,9 +121,16 @@ export default function AlunosSection({ active }) {
         aberto={modal.aberto}
         inicial={modal.editando}
         onFechar={() => setModal({ aberto: false, editando: null })}
+        onVerLaudo={async (alunoId) => {
+          try {
+            await verLaudoAluno(alunoId)
+          } catch (e) {
+            toast(e.message || "Erro ao abrir laudo.", "erro")
+          }
+        }}
         onSalvar={async (payload) => {
           await salvarAlunoApi(payload)
-          toast(`Aluno ${payload.nome} salvo! ✅`, "sucesso")
+          toast(`Aluno ${payload.nome} salvo!`, "sucesso")
           setModal({ aberto: false, editando: null })
         }}
       />

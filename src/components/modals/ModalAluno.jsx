@@ -1,6 +1,8 @@
 import { useEffect, useId, useState } from "react"
+import AppIcon from "../ui/AppIcon"
+import { FileText } from "lucide-react"
 
-export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
+export default function ModalAluno({ aberto, onFechar, onSalvar, inicial, onVerLaudo }) {
   const baseId = useId()
   const [matricula, setMatricula] = useState("")
   const [nome, setNome] = useState("")
@@ -8,6 +10,8 @@ export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
   const [diagnostico, setDiagnostico] = useState("")
   const [obs, setObs] = useState("")
   const [laudoNome, setLaudoNome] = useState("")
+  const [laudoFile, setLaudoFile] = useState(null)
+  const [temLaudoAtual, setTemLaudoAtual] = useState(false)
 
   useEffect(() => {
     if (!aberto) return
@@ -18,6 +22,8 @@ export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
       setDiagnostico(inicial.diagnostico || "")
       setObs(inicial.obs || "")
       setLaudoNome("")
+      setLaudoFile(null)
+      setTemLaudoAtual(Boolean(inicial.laudo_url))
     } else {
       setMatricula("")
       setNome("")
@@ -25,6 +31,8 @@ export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
       setDiagnostico("")
       setObs("")
       setLaudoNome("")
+      setLaudoFile(null)
+      setTemLaudoAtual(false)
     }
   }, [aberto, inicial])
 
@@ -50,6 +58,7 @@ export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
       obs,
       laudo: inicial?.laudo || Boolean(laudoNome),
       laudo_url: null,
+      laudoFile,
     })
   }
 
@@ -121,6 +130,24 @@ export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
 
           <div>
             <label className="campo-label">Laudo Médico (PDF)</label>
+            {temLaudoAtual ? (
+              <div className="mb-1" style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                <span className="badge badge-verde">Laudo anexado</span>
+                <button
+                  type="button"
+                  className="btn btn-secundario btn-sm"
+                  onClick={() => onVerLaudo?.(inicial?.id)}
+                  disabled={!inicial?.id}
+                  aria-label="Ver ou baixar laudo atual"
+                >
+                  Ver / Baixar
+                </button>
+              </div>
+            ) : (
+              <p className="texto-mudo" style={{ marginTop: "-0.25rem" }}>
+                Nenhum laudo anexado.
+              </p>
+            )}
             <div
               style={{
                 border: "2px dashed var(--cor-borda)",
@@ -137,7 +164,7 @@ export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
               }}
             >
               <span style={{ fontSize: "1.5rem" }} aria-hidden="true">
-                📋
+                <AppIcon icon={FileText} size={22} />
               </span>
               <p style={{ fontSize: "0.85rem", color: "var(--cor-texto-secundario)", marginTop: "0.35rem" }}>Clique para anexar o laudo</p>
             </div>
@@ -148,11 +175,12 @@ export default function ModalAluno({ aberto, onFechar, onSalvar, inicial }) {
               style={{ display: "none" }}
               onChange={(e) => {
                 const f = e.target.files?.[0]
+                setLaudoFile(f || null)
                 setLaudoNome(f ? f.name : "")
               }}
             />
             <p className="texto-mudo mt-1" aria-live="polite">
-              {laudoNome ? `📋 ${laudoNome}` : ""}
+              {laudoNome ? laudoNome : ""}
             </p>
           </div>
         </div>

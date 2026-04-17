@@ -1,8 +1,8 @@
-import { useNeuroInclude } from "../../context/NeuroIncludeContext"
+import { useSpectrum } from "../../context/SpectrumContext"
 import { isSecretaria } from "../../utils/perfil"
 
 export default function PerfilSection({ active }) {
-  const { usuario, logout } = useNeuroInclude()
+  const { usuario, logout } = useSpectrum()
   const secretaria = isSecretaria(usuario)
 
   return (

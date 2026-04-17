@@ -1,7 +1,9 @@
 import { useRef, useState } from "react"
 import { chatCohere } from "../../services/cohere"
 import { formatarMensagemChat } from "../../utils/markdown"
-import { useNeuroInclude } from "../../context/NeuroIncludeContext"
+import { useSpectrum } from "../../context/SpectrumContext"
+import AppIcon from "../ui/AppIcon"
+import { SendHorizonal } from "lucide-react"
 
 const SUGESTOES = [
   "Quais estratégias usar com alunos com TDAH?",
@@ -11,8 +13,8 @@ const SUGESTOES = [
 ]
 
 const FALLBACKS = {
-  tdah: `Para alunos com **TDAH**, recomendo:\n\n• **Instrução em blocos curtos** — no máximo 3 passos por vez\n• **Listas visuais** em vez de parágrafos longos\n• **Pausas programadas** a cada 15-20 minutos\n• **Feedback imediato** e positivo\n• **Material colorido** para organizar informações\n\nO NeuroInclude aplica automaticamente essas estratégias na adaptação! 🧠`,
-  tea: `Para alunos com **TEA Nível 1**, as principais estratégias são:\n\n• **Linguagem literal** — evitar metáforas, sarcasmo e ironia\n• **Sequência previsível** — sempre a mesma estrutura\n• **Rotina visual** — cronogramas e passo a passo\n• **Explícito é melhor** — nunca subentender nada\n• **Antecipação** — avisar mudanças com antecedência\n\nO perfil do aluno no sistema já personaliza tudo isso! ✨`,
+  tdah: `Para alunos com **TDAH**, recomendo:\n\n• **Instrução em blocos curtos** — no máximo 3 passos por vez\n• **Listas visuais** em vez de parágrafos longos\n• **Pausas programadas** a cada 15-20 minutos\n• **Feedback imediato** e positivo\n• **Material colorido** para organizar informações\n\nO Spectrum pode automatizar adaptações quando fizer sentido.`,
+  tea: `Para alunos com **TEA Nível 1**, as principais estratégias são:\n\n• **Linguagem literal** — evitar metáforas, sarcasmo e ironia\n• **Sequência previsível** — sempre a mesma estrutura\n• **Rotina visual** — cronogramas e passo a passo\n• **Explícito é melhor** — nunca subentender nada\n• **Antecipação** — avisar mudanças com antecedência\n\nO perfil do aluno no sistema já personaliza isso.`,
 }
 
 function detectarTema(msg) {
@@ -32,7 +34,7 @@ function toCohereHistory(mensagens) {
 }
 
 export default function ChatbotSection({ active }) {
-  const { usuario, toast } = useNeuroInclude()
+  const { usuario, toast, isTrialAtivo, trialUso, trialLimites, registrarUsoTrial } = useSpectrum()
   const [mensagens, setMensagens] = useState([])
   const [input, setInput] = useState("")
   const [digitando, setDigitando] = useState(false)
@@ -47,6 +49,7 @@ export default function ChatbotSection({ active }) {
   async function enviar(textoOpt) {
     const msg = (textoOpt ?? input).trim()
     if (!msg) return
+    if (!registrarUsoTrial("chat")) return
     setInput("")
     const userMsg = { id: crypto.randomUUID(), papel: "usuario", texto: msg }
     setMensagens((m) => [...m, userMsg])
@@ -59,7 +62,7 @@ export default function ChatbotSection({ active }) {
       const system = `Você é um assistente educacional especializado em educação inclusiva para crianças neurodivergentes (TDAH, TEA nível 1, dislexia).
 Ajude professores e psicopedagogos com estratégias pedagógicas, adaptações de material e dicas práticas.
 Seja objetivo, empático e prático. Use listas e formatação clara. Responda em português do Brasil.
-Mencione que o NeuroInclude pode automatizar adaptações quando relevante.`
+Mencione que o Spectrum pode automatizar adaptações quando relevante.`
 
       const respostaTexto = await chatCohere({
         message: `${system}\n\nPergunta do educador:\n${msg}`,
@@ -72,7 +75,7 @@ Mencione que o NeuroInclude pode automatizar adaptações quando relevante.`
       const tema = detectarTema(msg)
       const fallback =
         (tema && FALLBACKS[tema]) ||
-        `Obrigado pela pergunta! 🧠\n\nPosso ajudar com estratégias para TDAH, TEA nível 1, dislexia e outras condições neurodivergentes.\n\nTente perguntar sobre:\n• Estratégias para TDAH\n• Como adaptar textos para TEA\n• Atividades inclusivas\n• Provas adaptadas\n\nOu use o módulo "Adaptar Material" para adaptar PDFs automaticamente! ✨`
+        `Obrigado pela pergunta!\n\nPosso ajudar com estratégias para TDAH, TEA nível 1, dislexia e outras condições neurodivergentes.\n\nTente perguntar sobre:\n• Estratégias para TDAH\n• Como adaptar textos para TEA\n• Atividades inclusivas\n• Provas adaptadas\n\nOu use o módulo "Adaptar Material" para adaptar PDFs automaticamente.`
       toast("Chat offline ou chave ausente — mostrando resposta de apoio.", "info")
       setMensagens((m) => [...m, { id: crypto.randomUUID(), papel: "ia", texto: fallback }])
     } finally {
@@ -94,12 +97,17 @@ Mencione que o NeuroInclude pode automatizar adaptações quando relevante.`
   }
 
   const welcomeText =
-    "Olá! Sou o assistente educacional do NeuroInclude. 🧠\n\nPosso ajudar com **estratégias pedagógicas** para alunos com TDAH e TEA, tirar dúvidas sobre adaptações, ou dar sugestões de atividades inclusivas.\n\nComo posso ajudar você hoje?"
+    "Olá! Sou o assistente educacional do Spectrum.\n\nPosso ajudar com **estratégias pedagógicas** para alunos com TDAH e TEA, tirar dúvidas sobre adaptações, ou dar sugestões de atividades inclusivas.\n\nComo posso ajudar você hoje?"
 
   return (
     <section className={`secao ${active ? "ativa" : ""}`} id="secao-chatbot" aria-label="Chatbot educacional com IA">
       <div className="chat-container">
         <h2 className="sr-only">Assistente virtual educacional</h2>
+        {isTrialAtivo ? (
+          <p className="texto-mudo" style={{ padding: "0 1.5rem" }}>
+            Trial IA: <strong>{trialUso.chatPerguntas}</strong> de <strong>{trialLimites.chatPerguntas}</strong> perguntas utilizadas.
+          </p>
+        ) : null}
         <div className="chat-mensagens" id="chat-mensagens" aria-live="polite" aria-label="Conversa com a IA">
           <div className="mensagem ia" role="article" aria-label="Mensagem da IA">
             <div className="mensagem-avatar ia" aria-hidden="true">
@@ -159,7 +167,7 @@ Mencione que o NeuroInclude pode automatizar adaptações quando relevante.`
             onKeyDown={onKeyDown}
           />
           <button type="button" className="chat-enviar" onClick={() => enviar()} aria-label="Enviar mensagem">
-            ➤
+            <AppIcon icon={SendHorizonal} size={18} />
           </button>
         </div>
       </div>
