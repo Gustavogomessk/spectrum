@@ -1,0 +1,1 @@
+#Esse projeto foi desenvolvido na intenção de adaptar materiais para crianças neurodivergentes. 
