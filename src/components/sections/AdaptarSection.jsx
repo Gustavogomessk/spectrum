@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { jsPDF } from "jspdf"
 import { useSpectrum } from "../../context/SpectrumContext"
 import { adaptarMaterialCohere } from "../../services/cohere"
 import { extrairTextoPdf } from "../../services/pdfText"
@@ -21,8 +22,14 @@ function formatarTamanho(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function htmlParaTexto(html) {
+  if (!html) return ""
+  const doc = new DOMParser().parseFromString(html, "text/html")
+  return (doc.body?.textContent || "").replace(/\n{3,}/g, "\n\n").trim()
+}
+
 export default function AdaptarSection({ active }) {
-  const { alunos, toast, salvarMaterialApi, usuario, isTrialAtivo, trialUso, trialLimites, registrarUsoTrial } = useSpectrum()
+  const { alunos, toast, salvarMaterialApi, usuario, isTrialAtivo, trialUso, trialLimites, registrarUsoTrial, registrarMetricasIa, registrarPdfGerado } = useSpectrum()
 
   const [arquivo, setArquivo] = useState(null)
   const [selecionados, setSelecionados] = useState(() => new Set())
@@ -106,13 +113,16 @@ export default function AdaptarSection({ active }) {
       const perfilAluno = `${aluno.nome}. Diagnóstico: ${aluno.diagnostico}. Observações: ${aluno.obs || "—"}`
 
       let textoMd = ""
+      let usageMeta = null
       try {
-        textoMd = await adaptarMaterialCohere({
+        const ai = await adaptarMaterialCohere({
           textoFonte: textoFonte || `Material: ${arquivo.name}`,
           perfilAluno,
           tipoAdaptacao,
           observacoes: obs,
         })
+        textoMd = typeof ai === "string" ? ai : ai?.text || ""
+        usageMeta = typeof ai === "object" ? ai : null
       } catch (err) {
         console.error(err)
         textoMd = gerarFallbackAdaptacao({
@@ -146,27 +156,47 @@ export default function AdaptarSection({ active }) {
         const uid = usuario.id
         const base = crypto.randomUUID()
         pdfOriginalPath = `escola-${schoolId}/user-${uid}/materiais/${base}-original-${sanitizeStorageSegment(nomeBase)}`
-        pdfAdaptadoPath = `escola-${schoolId}/user-${uid}/materiais/${base}-adaptado-${sanitizeStorageSegment(nomeSemExt)}.html`
+        pdfAdaptadoPath = `escola-${schoolId}/user-${uid}/materiais/${base}-adaptado-${sanitizeStorageSegment(nomeSemExt)}.pdf`
 
         const { error: up1 } = await supabase.storage.from("uploads-files").upload(pdfOriginalPath, arquivo, { upsert: true, contentType: "application/pdf" })
         if (up1) throw up1
 
-        const htmlBlob = new Blob([`<div>${html}</div>`], { type: "text/html;charset=utf-8" })
-        const { error: up2 } = await supabase.storage.from("uploads-files").upload(pdfAdaptadoPath, htmlBlob, { upsert: true, contentType: "text/html" })
+        const pdf = new jsPDF({ unit: "pt", format: "a4" })
+        const textoLimpo = htmlParaTexto(html) || "Material adaptado sem conteúdo textual."
+        const linhas = pdf.splitTextToSize(textoLimpo, 500)
+        let y = 48
+        pdf.setFont("helvetica", "normal")
+        pdf.setFontSize(11)
+        linhas.forEach((linha) => {
+          if (y > 780) {
+            pdf.addPage()
+            y = 48
+          }
+          pdf.text(linha, 48, y)
+          y += 16
+        })
+        const pdfBlob = pdf.output("blob")
+        const { error: up2 } = await supabase.storage.from("uploads-files").upload(pdfAdaptadoPath, pdfBlob, { upsert: true, contentType: "application/pdf" })
         if (up2) throw up2
       }
 
-      await salvarMaterialApi({
+      const created = await salvarMaterialApi({
         nome: nomeSemExt,
         aluno: aluno.nome,
         perfil: aluno.diagnostico,
         conteudo_html: html,
         aluno_id: /^[0-9a-f-]{36}$/i.test(String(aluno.id)) ? aluno.id : null,
         pdf_original_nome: nomeBase,
-        pdf_adaptado_nome: `${nomeSemExt}-adaptado.html`,
+        pdf_adaptado_nome: `${nomeSemExt}-adaptado.pdf`,
         pdf_original_path: pdfOriginalPath,
         pdf_adaptado_path: pdfAdaptadoPath,
       })
+      if (created?.id && pdfAdaptadoPath) {
+        await registrarPdfGerado({ materialId: created.id, pdfUrl: pdfAdaptadoPath })
+      }
+      if (usageMeta?.usage?.totalTokens) {
+        await registrarMetricasIa({ model: usageMeta.model, usage: usageMeta.usage, requestKind: "adaptacao" })
+      }
 
       toast("Material adaptado com sucesso!", "sucesso")
     } catch (e) {

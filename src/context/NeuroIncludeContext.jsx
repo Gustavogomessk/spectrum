@@ -11,28 +11,39 @@ import {
   updateAluno,
 } from "../services/supabaseData"
 import { sanitizeStorageSegment, uploadPdf } from "../services/files"
-import { atualizarLicenca, atualizarLicencasUsuario, atualizarStatusBoleto as atualizarStatusBoletoApi, createInstituicao, editarInstituicao as editarInstituicaoStore, createUsuarioInstituicao, enviarNotificacao, getAdminData, desabilitarInstituicao, habilitarInstituicao, desabilitarUsuario, habilitarUsuario, criarBoleto, deletarBoleto, deletarUsuario, editarUsuario, deletarInstituicao, obterTokensCohere } from "../services/adminData"
+import { hash } from "bcryptjs"
+import {
+  atualizarLicenca,
+  atualizarStatusBoleto as atualizarStatusBoletoApi,
+  confirmarPagamentoViaWebhook,
+  createInstituicao,
+  createUsuarioInstituicao,
+  criarBoleto,
+  criarPagamentoSubadmin,
+  deletarBoleto,
+  deletarInstituicao,
+  deletarUsuario,
+  desabilitarInstituicao,
+  desabilitarUsuario,
+  editarInstituicao as editarInstituicaoStore,
+  editarUsuario,
+  enviarNotificacao,
+  getAdminData,
+  habilitarInstituicao,
+  habilitarUsuario,
+  listarNotificacoesSubadmin,
+  listarPagamentosSubadmin,
+  marcarNotificacaoComoLida,
+  obterTokensCohere,
+  registrarUsoIa,
+  salvarPdfGerado,
+} from "../services/adminData"
 import { mensagemErroSupabaseAuth } from "../utils/authErrors"
 import { isErroRelacionamentoPostgrest, isErroTabelaAusente, resumoErroSupabase } from "../utils/supabaseErrors"
 import { funcaoMetadataDePapelCadastro, isAdmin, PERFIL, SECOES_SO_EDUCADOR, perfilCodigoDeMetadata } from "../utils/perfil"
 
 const SpectrumContext = createContext(null)
 
-const PAPEL_MAP = {
-  professor: "Professora",
-  psico: "Psicopedagoga",
-  secretaria: "Secretaria",
-  admin_master: "Admin Master",
-  admin_instituicao: "SubAdmin Instituição",
-}
-
-const NOME_MAP = {
-  professor: "Prof. Ana Lima",
-  psico: "Psicopedagoga Carla",
-  secretaria: "Sec. João Pedro",
-  admin_master: "Admin Master",
-  admin_instituicao: "SubAdmin Instituição",
-}
 
 function iniciaisDe(nome) {
   return nome
@@ -51,9 +62,17 @@ export function SpectrumProvider({ children }) {
   const [activeSection, setActiveSection] = useState("dashboard")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [toasts, setToasts] = useState([])
-  const [adminData, setAdminData] = useState(() => getAdminData())
+  const [adminData, setAdminData] = useState({
+    instituicoes: [],
+    usuarios: [],
+    notificacoes: [],
+    boletos: [],
+    iaMetrics: { totalTokens: 0, adaptacoesRealizadas: 0, perguntasChat: 0, custoEstimado: 0 },
+  })
   const [trialUso, setTrialUso] = useState({ adaptacoes: 0, chatPerguntas: 0 })
   const [planosPopup, setPlanosPopup] = useState({ aberto: false, motivo: "" })
+  const [notificacoesSubadmin, setNotificacoesSubadmin] = useState([])
+  const [pagamentosSubadmin, setPagamentosSubadmin] = useState([])
   const toastSyncJaExibido = useRef(false)
 
   const userId = usuario?.id || "local-demo"
@@ -66,23 +85,36 @@ export function SpectrumProvider({ children }) {
     }, 3500)
   }, [])
 
-  const trialKey = `trial_usage_${userId}`
   const trialLimites = { adaptacoes: 5, chatPerguntas: 5 }
   const isTrialAtivo = Boolean(usuario && !usuario.schoolId && !isAdmin(usuario))
 
   useEffect(() => {
     if (!usuario) return
-    const raw = sessionStorage.getItem(trialKey)
-    if (!raw) {
+    if (!isSupabaseConfigured() || !supabase || !isTrialAtivo) {
       setTrialUso({ adaptacoes: 0, chatPerguntas: 0 })
       return
     }
-    try {
-      setTrialUso(JSON.parse(raw))
-    } catch {
-      setTrialUso({ adaptacoes: 0, chatPerguntas: 0 })
+    let ativo = true
+    supabase
+      .from("trial_usage")
+      .select("adaptacoes_usadas, perguntas_chat_usadas")
+      .eq("user_id", usuario.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!ativo) return
+        setTrialUso({
+          adaptacoes: Number(data?.adaptacoes_usadas || 0),
+          chatPerguntas: Number(data?.perguntas_chat_usadas || 0),
+        })
+      })
+      .catch(() => {
+        if (!ativo) return
+        setTrialUso({ adaptacoes: 0, chatPerguntas: 0 })
+      })
+    return () => {
+      ativo = false
     }
-  }, [trialKey, usuario])
+  }, [isTrialAtivo, usuario])
 
   const registrarUsoTrial = useCallback(
     (tipo) => {
@@ -103,10 +135,16 @@ export function SpectrumProvider({ children }) {
         atual.chatPerguntas += 1
       }
       setTrialUso(atual)
-      sessionStorage.setItem(trialKey, JSON.stringify(atual))
+      if (isSupabaseConfigured() && supabase && usuario?.id) {
+        supabase.from("trial_usage").upsert({
+          user_id: usuario.id,
+          adaptacoes_usadas: atual.adaptacoes,
+          perguntas_chat_usadas: atual.chatPerguntas,
+        })
+      }
       return true
     },
-    [isTrialAtivo, trialUso, trialKey],
+    [isTrialAtivo, trialUso, usuario?.id],
   )
 
   const abrirPlanosPopup = useCallback((motivo) => {
@@ -143,10 +181,47 @@ export function SpectrumProvider({ children }) {
     }
   }, [usuario, userId, toast])
 
+  const refreshAdminData = useCallback(async () => {
+    const data = await getAdminData()
+    setAdminData(data)
+  }, [])
+
+  const refreshNotificacoesSubadmin = useCallback(async () => {
+    if (!usuario?.id || !usuario?.schoolId) {
+      setNotificacoesSubadmin([])
+      return
+    }
+    const rows = await listarNotificacoesSubadmin({
+      userId: usuario.id,
+      instituicaoId: usuario.schoolId,
+    })
+    setNotificacoesSubadmin(rows)
+  }, [usuario?.id, usuario?.schoolId])
+
+  const refreshPagamentosSubadmin = useCallback(async () => {
+    if (!usuario?.id) {
+      setPagamentosSubadmin([])
+      return
+    }
+    const rows = await listarPagamentosSubadmin(usuario.id)
+    setPagamentosSubadmin(rows)
+  }, [usuario?.id])
+
   useEffect(() => {
     if (!usuario) return
     refresh()
   }, [usuario, refresh])
+
+  useEffect(() => {
+    if (!usuario) return
+    refreshAdminData()
+  }, [usuario, refreshAdminData])
+
+  useEffect(() => {
+    if (!usuario) return
+    refreshNotificacoesSubadmin()
+    refreshPagamentosSubadmin()
+  }, [usuario, refreshNotificacoesSubadmin, refreshPagamentosSubadmin])
 
   useEffect(() => {
     if (!usuario) return
@@ -349,8 +424,9 @@ export function SpectrumProvider({ children }) {
 
   const salvarMaterialApi = useCallback(
     async (row) => {
-      await insertMaterial(userId, row)
+      const created = await insertMaterial(userId, row)
       await refresh()
+      return created
     },
     [userId, refresh],
   )
@@ -363,15 +439,15 @@ export function SpectrumProvider({ children }) {
     [userId, refresh],
   )
 
-  const criarInstituicao = useCallback((payload) => {
-    createInstituicao(payload)
-    setAdminData(getAdminData())
-  }, [])
+  const criarInstituicao = useCallback(async (payload) => {
+    await createInstituicao(payload)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const editarInstituicao = useCallback((instituicaoId, dados) => {
-    editarInstituicaoStore(instituicaoId, dados)
-    setAdminData(getAdminData())
-  }, [])
+  const editarInstituicao = useCallback(async (instituicaoId, dados) => {
+    await editarInstituicaoStore(instituicaoId, dados)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
   const criarSubadmin = useCallback(
     async (payload) => {
@@ -399,87 +475,140 @@ export function SpectrumProvider({ children }) {
         console.log("SubAdmin criado no Supabase com sucesso")
       }
 
-      const user = createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1 })
-      console.log("SubAdmin criado no adminData:", user)
-      console.log("Todos os usuários no adminData:", getAdminData().usuarios)
-      setAdminData(getAdminData())
+      const passwordHash = await hash(payload.senha, 10)
+      await createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1, passwordHash })
+      await refreshAdminData()
       return true
     },
-    [cadastroSupabase, toast],
+    [cadastroSupabase, refreshAdminData, toast],
   )
 
-  const criarUsuarioInstituicao = useCallback((payload) => {
-    createUsuarioInstituicao(payload)
-    setAdminData(getAdminData())
-  }, [])
+  const criarUsuarioInstituicao = useCallback(async (payload) => {
+    await createUsuarioInstituicao(payload)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const atualizarLicencasUsuario = useCallback((usuarioId, licencas) => {
-    atualizarLicenca(usuarioId, licencas)
-    setAdminData(getAdminData())
-  }, [])
+  const atualizarLicencasUsuario = useCallback(async (usuarioId, licencas) => {
+    await atualizarLicenca(usuarioId, licencas)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const enviarNotificacaoAdmin = useCallback((payload) => {
-    enviarNotificacao(payload)
-    setAdminData(getAdminData())
-  }, [])
+  const enviarNotificacaoAdmin = useCallback(async (payload) => {
+    await enviarNotificacao(payload)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const atualizarStatusBoleto = useCallback((boletoId, status) => {
-    atualizarStatusBoletoApi(boletoId, status)
-    setAdminData(getAdminData())
-  }, [])
+  const atualizarStatusBoleto = useCallback(async (boletoId, status) => {
+    await atualizarStatusBoletoApi(boletoId, status)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const desabilitarInstituicaoFn = useCallback((instituicaoId) => {
-    desabilitarInstituicao(instituicaoId)
-    setAdminData(getAdminData())
-  }, [])
+  const desabilitarInstituicaoFn = useCallback(async (instituicaoId) => {
+    await desabilitarInstituicao(instituicaoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const habilitarInstituicaoFn = useCallback((instituicaoId) => {
-    habilitarInstituicao(instituicaoId)
-    setAdminData(getAdminData())
-  }, [])
+  const habilitarInstituicaoFn = useCallback(async (instituicaoId) => {
+    await habilitarInstituicao(instituicaoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const desabilitarUsuarioFn = useCallback((usuarioId) => {
-    desabilitarUsuario(usuarioId)
-    setAdminData(getAdminData())
-  }, [])
+  const desabilitarUsuarioFn = useCallback(async (usuarioId) => {
+    await desabilitarUsuario(usuarioId)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const habilitarUsuarioFn = useCallback((usuarioId) => {
-    habilitarUsuario(usuarioId)
-    setAdminData(getAdminData())
-  }, [])
+  const habilitarUsuarioFn = useCallback(async (usuarioId) => {
+    await habilitarUsuario(usuarioId)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const criarBoletoFn = useCallback((payload) => {
-    criarBoleto(payload)
-    setAdminData(getAdminData())
-  }, [])
+  const criarBoletoFn = useCallback(async (payload) => {
+    await criarBoleto(payload)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const deletarBoletoFn = useCallback((boletoId) => {
-    deletarBoleto(boletoId)
-    setAdminData(getAdminData())
-  }, [])
+  const deletarBoletoFn = useCallback(async (boletoId) => {
+    await deletarBoleto(boletoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const deletarUsuarioFn = useCallback((usuarioId) => {
-    deletarUsuario(usuarioId)
-    setAdminData(getAdminData())
-  }, [])
+  const deletarUsuarioFn = useCallback(async (usuarioId) => {
+    await deletarUsuario(usuarioId)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const editarUsuarioFn = useCallback((usuarioId, dados) => {
-    editarUsuario(usuarioId, dados)
-    setAdminData(getAdminData())
-  }, [])
+  const editarUsuarioFn = useCallback(async (usuarioId, dados) => {
+    await editarUsuario(usuarioId, dados)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
-  const deletarInstituicaoFn = useCallback((instituicaoId) => {
-    deletarInstituicao(instituicaoId)
-    setAdminData(getAdminData())
-  }, [])
+  const deletarInstituicaoFn = useCallback(async (instituicaoId) => {
+    await deletarInstituicao(instituicaoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
 
   const atualizarTokensCohere = useCallback(async () => {
     const tokens = await obterTokensCohere()
-    const data = getAdminData()
-    data.iaMetrics.totalTokens = tokens
-    sessionStorage.setItem("spectrum_admin_data_v1", JSON.stringify(data))
-    setAdminData(data)
+    setAdminData((prev) => ({ ...prev, iaMetrics: { ...prev.iaMetrics, totalTokens: tokens } }))
   }, [])
+
+  const registrarMetricasIa = useCallback(
+    async ({ model, usage, requestKind }) => {
+      if (!usuario?.id || !usage?.totalTokens) return
+      await registrarUsoIa({
+        userId: usuario.id,
+        model,
+        tokensUsados: usage.totalTokens,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        requestKind: requestKind || "chat",
+      })
+      await refreshAdminData()
+    },
+    [refreshAdminData, usuario?.id],
+  )
+
+  const registrarPdfGeradoFn = useCallback(
+    async ({ materialId, pdfUrl }) => {
+      if (!usuario?.id) return
+      await salvarPdfGerado({ materialId, userId: usuario.id, pdfUrl })
+    },
+    [usuario?.id],
+  )
+
+  const criarPagamentoSubadminFn = useCallback(
+    async ({ referencia, valor }) => {
+      if (!usuario?.id || !usuario?.schoolId) throw new Error("subadmin_sem_instituicao")
+      await criarPagamentoSubadmin({
+        referencia,
+        valor,
+        instituicaoId: usuario.schoolId,
+        subadminUserId: usuario.id,
+      })
+      await refreshPagamentosSubadmin()
+      await refreshAdminData()
+    },
+    [refreshAdminData, refreshPagamentosSubadmin, usuario?.id, usuario?.schoolId],
+  )
+
+  const confirmarPagamentoSubadmin = useCallback(
+    async (paymentId) => {
+      await confirmarPagamentoViaWebhook(paymentId)
+      await refreshPagamentosSubadmin()
+      await refreshAdminData()
+    },
+    [refreshAdminData, refreshPagamentosSubadmin],
+  )
+
+  const marcarNotificacaoLida = useCallback(
+    async (notificationId) => {
+      if (!usuario?.id) return
+      await marcarNotificacaoComoLida({ notificationId, userId: usuario.id })
+      await refreshNotificacoesSubadmin()
+    },
+    [refreshNotificacoesSubadmin, usuario?.id],
+  )
 
   const value = useMemo(
     () => ({
@@ -521,6 +650,8 @@ export function SpectrumProvider({ children }) {
       editarUsuario: editarUsuarioFn,
       deletarInstituicao: deletarInstituicaoFn,
       atualizarTokensCohere,
+      registrarMetricasIa,
+      registrarPdfGerado: registrarPdfGeradoFn,
       trialUso,
       trialLimites,
       isTrialAtivo,
@@ -529,6 +660,13 @@ export function SpectrumProvider({ children }) {
       abrirPlanosPopup,
       fecharPlanosPopup,
       refresh,
+      notificacoesSubadmin,
+      pagamentosSubadmin,
+      refreshNotificacoesSubadmin,
+      refreshPagamentosSubadmin,
+      marcarNotificacaoLida,
+      criarPagamentoSubadmin: criarPagamentoSubadminFn,
+      confirmarPagamentoSubadmin,
       isSupabase: isSupabaseConfigured(),
     }),
     [
@@ -560,6 +698,9 @@ export function SpectrumProvider({ children }) {
       habilitarInstituicaoFn,
       desabilitarUsuarioFn,
       habilitarUsuarioFn,
+      atualizarTokensCohere,
+      registrarMetricasIa,
+      registrarPdfGeradoFn,
       trialUso,
       trialLimites,
       isTrialAtivo,
@@ -568,6 +709,13 @@ export function SpectrumProvider({ children }) {
       abrirPlanosPopup,
       fecharPlanosPopup,
       refresh,
+      notificacoesSubadmin,
+      pagamentosSubadmin,
+      refreshNotificacoesSubadmin,
+      refreshPagamentosSubadmin,
+      marcarNotificacaoLida,
+      criarPagamentoSubadminFn,
+      confirmarPagamentoSubadmin,
     ],
   )
 

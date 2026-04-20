@@ -34,7 +34,7 @@ function toCohereHistory(mensagens) {
 }
 
 export default function ChatbotSection({ active }) {
-  const { usuario, toast, isTrialAtivo, trialUso, trialLimites, registrarUsoTrial } = useSpectrum()
+  const { usuario, toast, isTrialAtivo, trialUso, trialLimites, registrarUsoTrial, registrarMetricasIa } = useSpectrum()
   const [mensagens, setMensagens] = useState([])
   const [input, setInput] = useState("")
   const [digitando, setDigitando] = useState(false)
@@ -64,10 +64,14 @@ Ajude professores e psicopedagogos com estratégias pedagógicas, adaptações d
 Seja objetivo, empático e prático. Use listas e formatação clara. Responda em português do Brasil.
 Mencione que o Spectrum pode automatizar adaptações quando relevante.`
 
-      const respostaTexto = await chatCohere({
+      const resposta = await chatCohere({
         message: `${system}\n\nPergunta do educador:\n${msg}`,
         chatHistory: historicoAntes,
       })
+      const respostaTexto = typeof resposta === "string" ? resposta : resposta?.text || ""
+      if (resposta?.usage?.totalTokens) {
+        await registrarMetricasIa({ model: resposta.model, usage: resposta.usage, requestKind: "chat" })
+      }
 
       setMensagens((m) => [...m, { id: crypto.randomUUID(), papel: "ia", texto: respostaTexto }])
     } catch (e) {

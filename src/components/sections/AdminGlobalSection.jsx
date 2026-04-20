@@ -5,7 +5,7 @@ import { QRCodeSVG } from "qrcode.react"
 import JsBarcode from "jsbarcode"
 import AppIcon from "../ui/AppIcon"
 
-export default function AdminGlobalSection({ active }) {
+export default function AdminGlobalSection({ active, activeSection }) {
   const {
     adminData,
     criarInstituicao,
@@ -31,11 +31,12 @@ export default function AdminGlobalSection({ active }) {
   const [editInstId, setEditInstId] = useState(null)
   const [sub, setSub] = useState({ instituicaoId: "", nome: "", email: "", senha: "" })
   const [mensagem, setMensagem] = useState({ titulo: "", conteudo: "", tipo: "info" })
-  const [senhaGerada, setSenhaGerada] = useState("")
   const [boleto, setBoleto] = useState({ instituicaoId: "", referencia: "", valor: "" })
   const [usuarioEdit, setUsuarioEdit] = useState(null)
   const [boletoModal, setBoletoModal] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [filtroConta, setFiltroConta] = useState("todos")
+  const [buscaUsuario, setBuscaUsuario] = useState("")
   const barcodeRef = useRef(null)
 
   const PIX_KEY = "gugomes6@gmail.com"
@@ -163,15 +164,29 @@ export default function AdminGlobalSection({ active }) {
     [instituicoes, usuarios, boletos, notificacoes, iaMetrics],
   )
 
-  const gerarSenha = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$"
-    let senha = ""
-    for (let i = 0; i < 12; i++) {
-      senha += chars.charAt(Math.floor(Math.random() * chars.length))
+  const senhaForte = (senha) =>
+    typeof senha === "string" && senha.length >= 8 && /[A-Z]/.test(senha) && /[a-z]/.test(senha) && /\d/.test(senha) && /[^A-Za-z0-9]/.test(senha)
+
+  const usuariosFiltrados = useMemo(() => {
+    const termo = buscaUsuario.trim().toLowerCase()
+    return usuarios.filter((u) => {
+      const tipoConta = u.trial ? "trial" : u.contaPessoal ? "pessoal" : "institucional"
+      const passaConta = filtroConta === "todos" || filtroConta === tipoConta
+      const passaBusca = !termo || `${u.nome} ${u.email} ${u.papel}`.toLowerCase().includes(termo)
+      return passaConta && passaBusca
+    })
+  }, [usuarios, filtroConta, buscaUsuario])
+
+  useEffect(() => {
+    if (!active) return
+    if (activeSection === "admin-notificacoes") {
+      setActiveTab("notificacoes")
+      return
     }
-    setSenhaGerada(senha)
-    setSub((s) => ({ ...s, senha }))
-  }
+    if (activeSection === "admin-global") {
+      setActiveTab((prev) => (prev === "notificacoes" ? "dashboard" : prev))
+    }
+  }, [active, activeSection])
 
   if (!active) return <section className="secao" />
 
@@ -309,11 +324,11 @@ export default function AdminGlobalSection({ active }) {
                   <button
                     type="button"
                     className="btn btn-primario"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!inst.nome || !inst.cnpj || !inst.plano) return toast("Preencha nome, CNPJ e tipo de licença.", "erro")
                       if (!inst.limiteUsuarios || Number(inst.limiteUsuarios) < 0) return toast("Defina um limite válido de usuários.", "erro")
                       if (editInstId) {
-                        editarInstituicao(editInstId, {
+                        await editarInstituicao(editInstId, {
                           nome: inst.nome,
                           cnpj: inst.cnpj,
                           plano: inst.plano,
@@ -321,7 +336,7 @@ export default function AdminGlobalSection({ active }) {
                         })
                         toast("Instituição atualizada.", "sucesso")
                       } else {
-                        criarInstituicao(inst)
+                        await criarInstituicao(inst)
                         toast("Instituição criada.", "sucesso")
                       }
                       setInst({ nome: "", cnpj: "", plano: "Enterprise", limiteUsuarios: "" })
@@ -397,12 +412,12 @@ export default function AdminGlobalSection({ active }) {
                           <button
                             type="button"
                             className={`btn ${i.ativo ? "btn-perigo" : "btn-secundario"} btn-sm`}
-                            onClick={() => {
+                            onClick={async () => {
                               if (i.ativo) {
-                                desabilitarInstituicao(i.id)
+                                await desabilitarInstituicao(i.id)
                                 toast("Instituição desabilitada.", "sucesso")
                               } else {
-                                habilitarInstituicao(i.id)
+                                await habilitarInstituicao(i.id)
                                 toast("Instituição habilitada.", "sucesso")
                               }
                             }}
@@ -450,9 +465,9 @@ export default function AdminGlobalSection({ active }) {
                 <button
                   type="button"
                   className="btn btn-primario"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!boleto.instituicaoId || !boleto.referencia || !boleto.valor) return toast("Preencha todos os campos.", "erro")
-                    criarBoleto(boleto)
+                    await criarBoleto(boleto)
                     setBoleto({ instituicaoId: "", referencia: "", valor: "" })
                     toast("Boleto criado com sucesso.", "sucesso")
                   }}
@@ -500,7 +515,7 @@ export default function AdminGlobalSection({ active }) {
                             <button
                               type="button"
                               className="btn btn-secundario btn-sm"
-                              onClick={() => atualizarStatusBoleto(b.id, b.status === "pago" ? "pendente" : "pago")}
+                              onClick={async () => atualizarStatusBoleto(b.id, b.status === "pago" ? "pendente" : "pago")}
                             >
                               {b.status === "pago" ? "Marcar pendente" : "Marcar pago"}
                             </button>
@@ -564,9 +579,9 @@ export default function AdminGlobalSection({ active }) {
                   type="button"
                   className="btn btn-primario"
                   style={{ marginTop: "1rem" }}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!mensagem.titulo || !mensagem.conteudo) return toast("Preencha título e mensagem.", "erro")
-                    enviarNotificacaoAdmin({ titulo: mensagem.titulo, conteudo: mensagem.conteudo, tipo: mensagem.tipo, dataCriacao: new Date().toISOString() })
+                    await enviarNotificacaoAdmin({ titulo: mensagem.titulo, conteudo: mensagem.conteudo, tipo: mensagem.tipo, dataCriacao: new Date().toISOString() })
                     setMensagem({ titulo: "", conteudo: "", tipo: "info" })
                     toast("Notificação enviada.", "sucesso")
                   }}
@@ -620,24 +635,25 @@ export default function AdminGlobalSection({ active }) {
                   <input className="campo" placeholder="Nome do SubAdmin" value={sub.nome} onChange={(e) => setSub((s) => ({ ...s, nome: e.target.value }))} />
                   <input className="campo" placeholder="Email do SubAdmin" value={sub.email} onChange={(e) => setSub((s) => ({ ...s, email: e.target.value }))} />
                 </div>
-                <label className="campo-label">Senha (gerada automaticamente)</label>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input className="campo" value={senhaGerada} readOnly placeholder="Clique em Gerar senha" style={{ flex: 1 }} />
-                  <button type="button" className="btn btn-secundario" onClick={gerarSenha}>
-                    Gerar
-                  </button>
-                </div>
+                <label className="campo-label">Senha (definida manualmente)</label>
+                <input
+                  className="campo"
+                  type="password"
+                  placeholder="Mínimo 8, com maiúscula, minúscula, número e símbolo"
+                  value={sub.senha}
+                  onChange={(e) => setSub((s) => ({ ...s, senha: e.target.value }))}
+                />
                 <button
                   type="button"
                   className="btn btn-primario"
                   style={{ marginTop: "1rem" }}
                   onClick={async () => {
-                    if (!sub.instituicaoId || !sub.nome || !sub.email || !senhaGerada) return toast("Preencha todos os campos e gere uma senha.", "erro")
+                    if (!sub.instituicaoId || !sub.nome || !sub.email || !sub.senha) return toast("Preencha todos os campos.", "erro")
+                    if (!senhaForte(sub.senha)) return toast("Senha fraca. Use ao menos 8 caracteres com maiúscula, minúscula, número e símbolo.", "erro")
                     const created = await criarSubadmin({ ...sub })
                     if (!created) return
                     setSub({ instituicaoId: "", nome: "", email: "", senha: "" })
-                    setSenhaGerada("")
-                    toast("SubAdmin criado com sucesso! Verifique se o SubAdmin aparece na aba 'Usuários'. Se não conseguir fazer login, verifique se a confirmação de email está desativada no Supabase (Authentication → Providers → Email) ou confirme o email na caixa de entrada.", "sucesso")
+                    toast("SubAdmin criado com sucesso. A senha é armazenada com hash seguro pelo provedor de autenticação.", "sucesso")
                   }}
                 >
                   Criar SubAdmin
@@ -649,12 +665,29 @@ export default function AdminGlobalSection({ active }) {
               <div className="card-cabecalho">
                 <span className="card-titulo">Gestão de usuários</span>
               </div>
+              <div className="card-corpo">
+                <div className="linha-campos">
+                  <input
+                    className="campo"
+                    placeholder="Buscar por nome/email/papel"
+                    value={buscaUsuario}
+                    onChange={(e) => setBuscaUsuario(e.target.value)}
+                  />
+                  <select className="campo" value={filtroConta} onChange={(e) => setFiltroConta(e.target.value)}>
+                    <option value="todos">Todos os tipos de conta</option>
+                    <option value="trial">TRIAL</option>
+                    <option value="institucional">INSTITUCIONAL</option>
+                    <option value="pessoal">PESSOAL</option>
+                  </select>
+                </div>
+              </div>
               <div className="tabela-wrapper">
                 <table>
                   <thead>
                     <tr>
                       <th>Nome</th>
                       <th>Email</th>
+                      <th>Tipo de conta</th>
                       <th>Instituição</th>
                       <th>Papel</th>
                       <th>Licença</th>
@@ -663,12 +696,14 @@ export default function AdminGlobalSection({ active }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {usuarios.map((u) => {
+                    {usuariosFiltrados.map((u) => {
                       const inst = instituicoes.find((i) => i.id === u.instituicaoId)
+                      const tipoConta = u.trial ? "TRIAL" : u.contaPessoal ? "PESSOAL" : "INSTITUCIONAL"
                       return (
                         <tr key={u.id} style={{ opacity: !u.ativo ? 0.6 : 1 }}>
                           <td>{u.nome}</td>
                           <td>{u.email}</td>
+                          <td>{tipoConta}</td>
                           <td>{inst?.nome || "-"}</td>
                           <td>{u.papel}</td>
                           <td>{u.tipoLicenca || "Basic"}</td>
@@ -681,12 +716,12 @@ export default function AdminGlobalSection({ active }) {
                             <button
                               type="button"
                               className={`btn ${u.ativo ? "btn-perigo" : "btn-secundario"} btn-sm`}
-                              onClick={() => {
+                              onClick={async () => {
                                 if (u.ativo) {
-                                  desabilitarUsuario(u.id)
+                                  await desabilitarUsuario(u.id)
                                   toast("Usuário bloqueado.", "sucesso")
                                 } else {
-                                  habilitarUsuario(u.id)
+                                  await habilitarUsuario(u.id)
                                   toast("Usuário desbloqueado.", "sucesso")
                                 }
                               }}
@@ -785,8 +820,8 @@ export default function AdminGlobalSection({ active }) {
                         type="button"
                         className="btn btn-primario"
                         style={{ flex: 1 }}
-                        onClick={() => {
-                          editarUsuario(usuarioEdit.id, {
+                        onClick={async () => {
+                          await editarUsuario(usuarioEdit.id, {
                             nome: usuarioEdit.nome,
                             email: usuarioEdit.email,
                             papel: usuarioEdit.papel,
@@ -984,15 +1019,15 @@ export default function AdminGlobalSection({ active }) {
                     type="button"
                     className="btn btn-perigo"
                     style={{ flex: 1 }}
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirmDelete.tipo === "cliente") {
-                        deletarInstituicao(confirmDelete.id)
+                        await deletarInstituicao(confirmDelete.id)
                         toast("Cliente deletado com sucesso.", "sucesso")
                       } else if (confirmDelete.tipo === "boleto") {
-                        deletarBoleto(confirmDelete.id)
+                        await deletarBoleto(confirmDelete.id)
                         toast("Boleto deletado com sucesso.", "sucesso")
                       } else if (confirmDelete.tipo === "usuario") {
-                        deletarUsuario(confirmDelete.id)
+                        await deletarUsuario(confirmDelete.id)
                         toast("Usuário deletado com sucesso.", "sucesso")
                       }
                       setConfirmDelete(null)

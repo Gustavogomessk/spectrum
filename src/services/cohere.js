@@ -41,7 +41,18 @@ export async function chatCohere({ message, chatHistory = [] }) {
   }
 
   const text = data.text ?? data.message?.content ?? ""
-  return typeof text === "string" ? text : String(text)
+  const usage = {
+    promptTokens: Number(data?.meta?.billed_units?.input_tokens || 0),
+    completionTokens: Number(data?.meta?.billed_units?.output_tokens || 0),
+  }
+  return {
+    text: typeof text === "string" ? text : String(text),
+    model: data?.meta?.api_version?.version || model,
+    usage: {
+      ...usage,
+      totalTokens: usage.promptTokens + usage.completionTokens,
+    },
+  }
 }
 
 const PROMPT_ADAPTACAO = `Você é um especialista em educação inclusiva e adaptação de materiais para crianças neurodivergentes.
@@ -96,5 +107,16 @@ ${textoFonte}`
   }
 
   const text = data.text ?? data.message?.content ?? ""
-  return typeof text === "string" ? text : String(text)
+  const usage = {
+    promptTokens: Number(data?.meta?.billed_units?.input_tokens || 0),
+    completionTokens: Number(data?.meta?.billed_units?.output_tokens || 0),
+  }
+  return {
+    text: typeof text === "string" ? text : String(text),
+    model: data?.meta?.api_version?.version || model,
+    usage: {
+      ...usage,
+      totalTokens: usage.promptTokens + usage.completionTokens,
+    },
+  }
 }

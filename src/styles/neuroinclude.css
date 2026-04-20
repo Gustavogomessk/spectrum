@@ -472,14 +472,33 @@
   .material-conteudo {
     padding: 1.5rem 2rem; line-height: 1.9;
     font-size: 1rem; color: var(--cor-texto-principal);
+    background: linear-gradient(180deg, #fff 0%, #fcfdff 100%);
+  }
+  .material-conteudo p {
+    margin: 0 0 0.9rem;
+    line-height: 1.75;
   }
   .material-conteudo h2 {
     font-family: var(--fonte-titulo); font-size: 1.2rem; font-weight: 800;
     color: var(--cor-primaria); margin: 1.5rem 0 0.75rem;
     padding-left: 0.75rem; border-left: 4px solid var(--cor-primaria);
   }
+  .material-conteudo h3 {
+    margin: 1.2rem 0 0.65rem;
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--cor-texto-principal);
+  }
   .material-conteudo ul {
     list-style: none; padding: 0; margin: 0.75rem 0;
+  }
+  .material-conteudo ol {
+    padding-left: 1.2rem;
+    margin: 0.75rem 0;
+  }
+  .material-conteudo ol li {
+    margin-bottom: 0.45rem;
+    line-height: 1.65;
   }
   .material-conteudo ul li {
     display: flex; align-items: flex-start; gap: 0.75rem;
@@ -496,6 +515,10 @@
     border-left: 4px solid var(--cor-acento);
   }
   .destaque-box strong { color: #a36b10; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem; }
+  .destaque-box p {
+    margin: 0;
+    line-height: 1.6;
+  }
 
   /* =========================================
      LISTA DE ALUNOS (gestão)

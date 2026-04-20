@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "bcryptjs": "^3.0.3",
     "jsbarcode": "^3.12.3",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.8.0",
     "pdfjs-dist": "^4.10.38",
     "qrcode.react": "^4.2.0",

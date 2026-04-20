@@ -11,9 +11,9 @@ import ChatbotSection from "../components/sections/ChatbotSection"
 import PerfilSection from "../components/sections/PerfilSection"
 import AdminGlobalSection from "../components/sections/AdminGlobalSection"
 import AdminInstituicaoSection from "../components/sections/AdminInstituicaoSection"
-import { isEducador } from "../utils/perfil"
+import { isAdminInstituicao, isEducador } from "../utils/perfil"
 import AppIcon from "../components/ui/AppIcon"
-import { Sparkles } from "lucide-react"
+import { Bell, Sparkles } from "lucide-react"
 import PlanosPopup from "../components/modals/PlanosPopup"
 
 const TITULOS = {
@@ -36,10 +36,13 @@ export default function AppShell() {
     sidebarOpen,
     setSidebarOpen,
     toasts,
+    notificacoesSubadmin,
     planosPopup,
     fecharPlanosPopup,
   } = useSpectrum()
   const podeAdaptar = isEducador(usuario)
+  const isSubadmin = isAdminInstituicao(usuario)
+  const notificacoesNaoLidas = (notificacoesSubadmin || []).filter((n) => !n.lida).length
 
   useEffect(() => {
     function onEsc(e) {
@@ -79,6 +82,38 @@ export default function AppShell() {
                 </span>
               </button>
             ) : null}
+            {isSubadmin ? (
+              <button
+                type="button"
+                className="btn btn-secundario btn-sm"
+                onClick={() => ir("admin-instituicao")}
+                aria-label="Abrir notificações"
+                style={{ position: "relative" }}
+              >
+                <AppIcon icon={Bell} size={16} />
+                {notificacoesNaoLidas > 0 ? (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "-6px",
+                      right: "-6px",
+                      minWidth: "18px",
+                      height: "18px",
+                      borderRadius: "999px",
+                      background: "var(--cor-perigo)",
+                      color: "#fff",
+                      fontSize: "0.7rem",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 5px",
+                    }}
+                  >
+                    {notificacoesNaoLidas}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
           </Topbar>
 
           <DashboardSection
@@ -91,7 +126,7 @@ export default function AppShell() {
           <AlunosSection active={activeSection === "alunos"} />
           <ChatbotSection active={activeSection === "chatbot"} />
           <PerfilSection active={activeSection === "perfil"} />
-          <AdminGlobalSection active={activeSection === "admin-global" || activeSection === "admin-notificacoes"} />
+          <AdminGlobalSection active={activeSection === "admin-global" || activeSection === "admin-notificacoes"} activeSection={activeSection} />
           <AdminInstituicaoSection active={activeSection === "admin-instituicao"} />
         </main>
       </div>

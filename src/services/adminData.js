@@ -1,238 +1,378 @@
-const KEY = "spectrum_admin_data_v1"
+import { supabase, isSupabaseConfigured } from "./supabaseClient"
 
 const DEFAULT_DATA = {
-  instituicoes: [
-    { id: "inst-1", nome: "Colégio Horizonte", cnpj: "12.345.678/0001-90", plano: "Enterprise", limiteUsuarios: 50, statusBoleto: "pago", ativo: true },
-    { id: "inst-2", nome: "Escola Nova Geração", cnpj: "98.765.432/0001-11", plano: "Personal", limiteUsuarios: 20, statusBoleto: "pendente", ativo: true },
-  ],
-  usuarios: [
-    { id: "u-1", instituicaoId: "inst-1", nome: "Carla Souza", email: "carla@horizonte.edu.br", papel: "subadmin", licencas: 12, tipoLicenca: "PRO", ativo: true },
-    { id: "u-2", instituicaoId: "inst-1", nome: "Lucas Lima", email: "lucas@horizonte.edu.br", papel: "professor", licencas: 1, tipoLicenca: "Basic", ativo: true },
-    { id: "u-3", instituicaoId: "inst-2", nome: "Renata Alves", email: "renata@novageracao.edu.br", papel: "subadmin", licencas: 5, tipoLicenca: "PRO", ativo: true },
-  ],
+  instituicoes: [],
+  usuarios: [],
   notificacoes: [],
-  boletos: [
-    { id: "b-1", instituicaoId: "inst-1", referencia: "04/2026", valor: 1290, status: "pago" },
-    { id: "b-2", instituicaoId: "inst-2", referencia: "04/2026", valor: 590, status: "pendente" },
-  ],
+  boletos: [],
   iaMetrics: {
-    totalTokens: 125000,
-    adaptacoesRealizadas: 450,
-    perguntasChat: 1200,
-    custoEstimado: 25.50,
+    totalTokens: 0,
+    adaptacoesRealizadas: 0,
+    perguntasChat: 0,
+    custoEstimado: 0,
   },
 }
 
-function readStore() {
-  const raw = sessionStorage.getItem(KEY)
-  if (!raw) {
-    sessionStorage.setItem(KEY, JSON.stringify(DEFAULT_DATA))
-    return DEFAULT_DATA
+function buildSimplePixPayload(reference, amount) {
+  const valor = Number(amount || 0).toFixed(2)
+  return `PIX|REF:${reference}|VALOR:${valor}`
+}
+
+function toInstituicao(row) {
+  return {
+    id: row.id,
+    nome: row.name,
+    cnpj: row.document || "",
+    plano: row.plan || "Trial Institucional",
+    limiteUsuarios: row.user_limit ?? 0,
+    ativo: row.active !== false,
   }
+}
+
+function toUsuario(row) {
+  return {
+    id: row.id,
+    instituicaoId: row.institution_id,
+    nome: row.full_name || "Usuário",
+    email: row.email || "",
+    papel: row.role || "usuario",
+    licencas: row.licenses ?? 1,
+    tipoLicenca: row.license_type || "Basic",
+    ativo: row.active !== false,
+    contaPessoal: !row.institution_id,
+    trial: row.account_type === "trial",
+  }
+}
+
+function toNotificacao(row) {
+  return {
+    id: row.id,
+    instituicaoId: row.institution_id || null,
+    titulo: row.title,
+    conteudo: row.message,
+    tipo: row.type || "info",
+    dataCriacao: row.created_at,
+  }
+}
+
+function toBoleto(row) {
+  return {
+    id: row.id,
+    instituicaoId: row.institution_id,
+    referencia: row.reference,
+    valor: Number(row.amount || 0),
+    status: row.status || "pendente",
+    qrCodePayload: row.qr_code_payload || "",
+  }
+}
+
+async function fetchInstituicoes() {
+  const { data, error } = await supabase.from("admin_institutions").select("*").order("created_at", { ascending: false })
+  if (error) throw error
+  return (data || []).map(toInstituicao)
+}
+
+async function fetchUsuarios() {
+  const { data, error } = await supabase.from("admin_users").select("*").order("created_at", { ascending: false })
+  if (error) throw error
+  return (data || []).map(toUsuario)
+}
+
+async function fetchNotificacoes() {
+  const { data, error } = await supabase.from("admin_notifications").select("*").order("created_at", { ascending: false })
+  if (error) throw error
+  return (data || []).map(toNotificacao)
+}
+
+async function fetchBoletos() {
+  const { data, error } = await supabase.from("admin_payments").select("*").order("created_at", { ascending: false })
+  if (error) throw error
+  return (data || []).map(toBoleto)
+}
+
+async function fetchIaMetrics() {
+  const [{ data: usage }, { count: adaptacoes }] = await Promise.all([
+    supabase.from("ai_usage_logs").select("total_tokens, estimated_cost, request_kind"),
+    supabase.from("materiais").select("id", { count: "exact", head: true }),
+  ])
+  const totalTokens = (usage || []).reduce((acc, row) => acc + Number(row.total_tokens || 0), 0)
+  const custoEstimado = (usage || []).reduce((acc, row) => acc + Number(row.estimated_cost || 0), 0)
+  const perguntas = (usage || []).filter((row) => row.request_kind === "chat").length
+  const adaptacoesIa = (usage || []).filter((row) => row.request_kind === "adaptacao").length
+  return {
+    totalTokens,
+    adaptacoesRealizadas: Math.max(adaptacoes || 0, adaptacoesIa),
+    perguntasChat: perguntas,
+    custoEstimado,
+  }
+}
+
+export async function getAdminData() {
+  if (!isSupabaseConfigured() || !supabase) return DEFAULT_DATA
   try {
-    return JSON.parse(raw)
-  } catch {
-    sessionStorage.setItem(KEY, JSON.stringify(DEFAULT_DATA))
+    const [instituicoes, usuarios, notificacoes, boletos, iaMetrics] = await Promise.all([
+      fetchInstituicoes(),
+      fetchUsuarios(),
+      fetchNotificacoes(),
+      fetchBoletos(),
+      fetchIaMetrics(),
+    ])
+    return { instituicoes, usuarios, notificacoes, boletos, iaMetrics }
+  } catch (error) {
+    console.error("Erro ao carregar dados administrativos:", error)
     return DEFAULT_DATA
   }
 }
 
-function writeStore(data) {
-  sessionStorage.setItem(KEY, JSON.stringify(data))
-}
-
-export function getAdminData() {
-  return readStore()
-}
-
-export function createInstituicao(payload) {
-  const data = readStore()
-  const inst = {
-    id: crypto.randomUUID(),
-    nome: payload.nome,
-    cnpj: payload.cnpj,
-    plano: payload.plano || "Trial Institucional",
-    limiteUsuarios: Number(payload.limiteUsuarios || 0),
-    statusBoleto: "pendente",
-    ativo: true,
+export async function createInstituicao(payload) {
+  if (!supabase) return null
+  const insert = {
+    name: payload.nome,
+    document: payload.cnpj || null,
+    plan: payload.plano || "Trial Institucional",
+    user_limit: Number(payload.limiteUsuarios || 0),
+    active: true,
   }
-  data.instituicoes.unshift(inst)
-  writeStore(data)
-  return inst
+  const { data, error } = await supabase.from("admin_institutions").insert(insert).select().single()
+  if (error) throw error
+  return toInstituicao(data)
 }
 
-export function createUsuarioInstituicao(payload) {
-  const data = readStore()
-  const user = {
-    id: crypto.randomUUID(),
-    instituicaoId: payload.instituicaoId,
-    nome: payload.nome,
-    email: payload.email,
-    papel: payload.papel,
-    licencas: Number(payload.licencas || 1),
-    tipoLicenca: payload.tipoLicenca || "Basic",
-    ativo: true,
+export async function createUsuarioInstituicao(payload) {
+  if (!supabase) return null
+  const insert = {
+    institution_id: payload.instituicaoId || null,
+    full_name: payload.nome,
+    email: payload.email || null,
+    password_hash: payload.passwordHash || null,
+    role: payload.papel || "usuario",
+    licenses: Number(payload.licencas || 1),
+    license_type: payload.tipoLicenca || "Basic",
+    account_type: payload.accountType || (payload.instituicaoId ? "institution" : "trial"),
+    active: true,
   }
-  data.usuarios.unshift(user)
-  writeStore(data)
-  return user
+  const { data, error } = await supabase.from("admin_users").insert(insert).select().single()
+  if (error) throw error
+  return toUsuario(data)
 }
 
-export function enviarNotificacao(payload) {
-  const data = readStore()
-  const notif = {
-    id: crypto.randomUUID(),
-    instituicaoId: payload.instituicaoId || null,
-    mensagem: payload.mensagem,
-    createdAt: new Date().toISOString(),
+export async function enviarNotificacao(payload) {
+  if (!supabase) return null
+  const insert = {
+    institution_id: payload.instituicaoId || null,
+    title: payload.titulo || "Notificação",
+    message: payload.conteudo || payload.mensagem || "",
+    type: payload.tipo || "info",
   }
-  data.notificacoes.unshift(notif)
-  writeStore(data)
-  return notif
+  const { data, error } = await supabase.from("admin_notifications").insert(insert).select().single()
+  if (error) throw error
+  return toNotificacao(data)
 }
 
-export function atualizarLicenca(usuarioId, licencas) {
-  const data = readStore()
-  data.usuarios = data.usuarios.map((u) => (u.id === usuarioId ? { ...u, licencas: Number(licencas) } : u))
-  writeStore(data)
+export async function atualizarLicenca(usuarioId, licencas) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_users").update({ licenses: Number(licencas) }).eq("id", usuarioId)
+  if (error) throw error
 }
 
-export function atualizarStatusBoleto(boletoId, status) {
-  const data = readStore()
-  data.boletos = data.boletos.map((b) => (b.id === boletoId ? { ...b, status } : b))
-  writeStore(data)
+export async function atualizarStatusBoleto(boletoId, status) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_payments").update({ status }).eq("id", boletoId)
+  if (error) throw error
 }
 
-export function atualizarLicencasUsuario(usuarioId, licencas) {
-  const data = readStore()
-  data.usuarios = data.usuarios.map((u) => (u.id === usuarioId ? { ...u, licencas: Number(licencas) } : u))
-  writeStore(data)
+export async function atualizarLicencasUsuario(usuarioId, licencas) {
+  return atualizarLicenca(usuarioId, licencas)
 }
 
 export function gerarSenhaAleatoria() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%"
   let senha = ""
-  for (let i = 0; i < 12; i++) {
-    senha += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
+  for (let i = 0; i < 12; i++) senha += chars.charAt(Math.floor(Math.random() * chars.length))
   return senha
 }
 
-export function desabilitarInstituicao(instituicaoId) {
-  const data = readStore()
-  // Desabilita a instituição
-  data.instituicoes = data.instituicoes.map((i) => (i.id === instituicaoId ? { ...i, ativo: false } : i))
-  // Desabilita todos os usuários desta instituição
-  data.usuarios = data.usuarios.map((u) => (u.instituicaoId === instituicaoId ? { ...u, ativo: false } : u))
-  writeStore(data)
+export async function desabilitarInstituicao(instituicaoId) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_institutions").update({ active: false }).eq("id", instituicaoId)
+  if (error) throw error
 }
 
-export function habilitarInstituicao(instituicaoId) {
-  const data = readStore()
-  data.instituicoes = data.instituicoes.map((i) => (i.id === instituicaoId ? { ...i, ativo: true } : i))
-  // Habilita todos os usuários desta instituição novamente
-  data.usuarios = data.usuarios.map((u) => (u.instituicaoId === instituicaoId ? { ...u, ativo: true } : u))
-  writeStore(data)
+export async function habilitarInstituicao(instituicaoId) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_institutions").update({ active: true }).eq("id", instituicaoId)
+  if (error) throw error
 }
 
-export function desabilitarUsuario(usuarioId) {
-  const data = readStore()
-  data.usuarios = data.usuarios.map((u) => (u.id === usuarioId ? { ...u, ativo: false } : u))
-  writeStore(data)
+export async function desabilitarUsuario(usuarioId) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_users").update({ active: false }).eq("id", usuarioId)
+  if (error) throw error
 }
 
-export function habilitarUsuario(usuarioId) {
-  const data = readStore()
-  data.usuarios = data.usuarios.map((u) => (u.id === usuarioId ? { ...u, ativo: true } : u))
-  writeStore(data)
+export async function habilitarUsuario(usuarioId) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_users").update({ active: true }).eq("id", usuarioId)
+  if (error) throw error
 }
 
-export function criarBoleto(payload) {
-  const data = readStore()
-  const boleto = {
-    id: crypto.randomUUID(),
-    instituicaoId: payload.instituicaoId,
-    referencia: payload.referencia,
-    valor: Number(payload.valor),
+export async function criarBoleto(payload) {
+  if (!supabase) return null
+  const insert = {
+    institution_id: payload.instituicaoId,
+    reference: payload.referencia,
+    amount: Number(payload.valor || 0),
     status: "pendente",
+    qr_code_payload: payload.qrCodePayload || null,
+    payment_method: "pix",
   }
-  data.boletos.unshift(boleto)
-  writeStore(data)
-  return boleto
+  const { data, error } = await supabase.from("admin_payments").insert(insert).select().single()
+  if (error) throw error
+  return toBoleto(data)
 }
 
-export function deletarBoleto(boletoId) {
-  const data = readStore()
-  data.boletos = data.boletos.filter((b) => b.id !== boletoId)
-  writeStore(data)
+export async function criarPagamentoSubadmin(payload) {
+  if (!supabase) return null
+  const qr = buildSimplePixPayload(payload.referencia, payload.valor)
+  const insert = {
+    institution_id: payload.instituicaoId,
+    subadmin_user_id: payload.subadminUserId || null,
+    reference: payload.referencia,
+    amount: Number(payload.valor || 0),
+    status: "pendente",
+    qr_code_payload: qr,
+    payment_method: "pix",
+  }
+  const { data, error } = await supabase.from("admin_payments").insert(insert).select().single()
+  if (error) throw error
+  return toBoleto(data)
 }
 
-export function deletarUsuario(usuarioId) {
-  const data = readStore()
-  data.usuarios = data.usuarios.filter((u) => u.id !== usuarioId)
-  writeStore(data)
+export async function listarPagamentosSubadmin(subadminUserId) {
+  if (!supabase || !subadminUserId) return []
+  const { data, error } = await supabase
+    .from("admin_payments")
+    .select("*")
+    .eq("subadmin_user_id", subadminUserId)
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return (data || []).map(toBoleto)
 }
 
-export function editarUsuario(usuarioId, dados) {
-  const data = readStore()
-  data.usuarios = data.usuarios.map((u) => 
-    u.id === usuarioId ? { ...u, ...dados } : u
-  )
-  writeStore(data)
+export async function confirmarPagamentoViaWebhook(paymentId) {
+  const response = await fetch("/api/payments/webhook", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paymentId, status: "pago" }),
+  })
+  if (!response.ok) throw new Error("Erro ao confirmar pagamento")
+  return response.json()
 }
 
-export function editarInstituicao(instituicaoId, dados) {
-  const data = readStore()
-  data.instituicoes = data.instituicoes.map((inst) =>
-    inst.id === instituicaoId ? { ...inst, ...dados } : inst
-  )
-  writeStore(data)
+export async function deletarBoleto(boletoId) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_payments").delete().eq("id", boletoId)
+  if (error) throw error
 }
 
-export function deletarInstituicao(instituicaoId) {
-  const data = readStore()
-  // Deleta a instituição
-  data.instituicoes = data.instituicoes.filter((i) => i.id !== instituicaoId)
-  // Deleta todos os usuários desta instituição
-  data.usuarios = data.usuarios.filter((u) => u.instituicaoId !== instituicaoId)
-  // Deleta todos os boletos desta instituição
-  data.boletos = data.boletos.filter((b) => b.instituicaoId !== instituicaoId)
-  writeStore(data)
+export async function deletarUsuario(usuarioId) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_users").delete().eq("id", usuarioId)
+  if (error) throw error
+}
+
+export async function editarUsuario(usuarioId, dados) {
+  if (!supabase) return
+  const update = {
+    full_name: dados.nome,
+    email: dados.email,
+    role: dados.papel,
+    license_type: dados.tipoLicenca,
+  }
+  const { error } = await supabase.from("admin_users").update(update).eq("id", usuarioId)
+  if (error) throw error
+}
+
+export async function editarInstituicao(instituicaoId, dados) {
+  if (!supabase) return
+  const update = {
+    name: dados.nome,
+    document: dados.cnpj,
+    plan: dados.plano,
+    user_limit: Number(dados.limiteUsuarios || 0),
+  }
+  const { error } = await supabase.from("admin_institutions").update(update).eq("id", instituicaoId)
+  if (error) throw error
+}
+
+export async function deletarInstituicao(instituicaoId) {
+  if (!supabase) return
+  const { error } = await supabase.from("admin_institutions").delete().eq("id", instituicaoId)
+  if (error) throw error
 }
 
 export async function obterTokensCohere() {
-  try {
-    const response = await fetch("/api/cohere/tokens")
-    if (!response.ok) throw new Error("Erro ao obter tokens da Cohere")
-    const data = await response.json()
-    return data.totalTokens || 0
-  } catch (error) {
+  if (!supabase) return 0
+  const { data, error } = await supabase.from("ai_usage_logs").select("total_tokens")
+  if (error) {
     console.error("Erro ao obter tokens Cohere:", error)
     return 0
   }
+  return (data || []).reduce((acc, row) => acc + Number(row.total_tokens || 0), 0)
 }
 
-export function gerarQRCodePix(valor, chave, nome) {
-  // Gerar dados do QR Code Pix (formato EMV)
-  // Essa é uma simplificação - em produção usar biblioteca profissional
-  const pixData = `00020126580014br.gov.bcb.pix`
-  return {
-    tipo: "pix",
-    chave,
-    valor,
-    nome,
-    qrData: pixData,
-  }
+export async function registrarUsoIa({ userId, model, tokensUsados, promptTokens = 0, completionTokens = 0, requestKind = "chat", estimatedCost = 0 }) {
+  if (!supabase || !userId) return
+  const { error } = await supabase.from("ai_usage_logs").insert({
+    user_id: userId,
+    provider: "cohere",
+    model: model || null,
+    prompt_tokens: Number(promptTokens || 0),
+    completion_tokens: Number(completionTokens || 0),
+    total_tokens: Number(tokensUsados || 0),
+    estimated_cost: Number(estimatedCost || 0),
+    request_kind: requestKind,
+  })
+  if (error) throw error
 }
 
-export function gerarCodigoBarras(referencia, valor) {
-  // Retorna dados para gerar código de barras
-  // Usar biblioteca como jsbarcode para renderizar
-  return {
-    tipo: "boleto",
-    referencia,
-    valor,
-    codigo: referencia.replace(/\D/g, ""), // remove caracteres não numéricos
-  }
+export async function listarNotificacoesSubadmin({ userId, instituicaoId }) {
+  if (!supabase || !userId) return []
+  const { data: notifications, error: errN } = await supabase
+    .from("admin_notifications")
+    .select("*")
+    .or(`institution_id.eq.${instituicaoId},institution_id.is.null`)
+    .order("created_at", { ascending: false })
+  if (errN) throw errN
+
+  const notificationIds = (notifications || []).map((n) => n.id)
+  if (notificationIds.length === 0) return []
+  const { data: reads, error: errR } = await supabase
+    .from("admin_notification_reads")
+    .select("notification_id")
+    .eq("user_id", userId)
+    .in("notification_id", notificationIds)
+  if (errR) throw errR
+  const readSet = new Set((reads || []).map((r) => r.notification_id))
+  return (notifications || []).map((n) => ({ ...toNotificacao(n), lida: readSet.has(n.id) }))
+}
+
+export async function marcarNotificacaoComoLida({ notificationId, userId }) {
+  if (!supabase) return
+  const { error } = await supabase
+    .from("admin_notification_reads")
+    .upsert({ notification_id: notificationId, user_id: userId, read_at: new Date().toISOString() }, { onConflict: "notification_id,user_id" })
+  if (error) throw error
+}
+
+export async function salvarPdfGerado({ materialId, userId, pdfUrl }) {
+  if (!supabase || !materialId || !userId || !pdfUrl) return
+  const { error } = await supabase.from("generated_pdfs").insert({
+    material_id: materialId,
+    user_id: userId,
+    pdf_url: pdfUrl,
+    generated_at: new Date().toISOString(),
+  })
+  if (error) throw error
 }
 

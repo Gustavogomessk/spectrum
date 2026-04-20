@@ -30,7 +30,12 @@ export default function HistoricoSection({ active }) {
     }
   }
 
-  function baixar(mat) {
+  async function baixar(mat) {
+    if (mat?.pdf_adaptado_path) {
+      await abrirPath(mat.pdf_adaptado_path)
+      toast("Download do PDF iniciado.", "sucesso")
+      return
+    }
     const nomeBase = (mat?.nome || "material").toString().trim() || "material"
     const filename = `${nomeBase}-adaptado.html`.replace(/[\\/:*?"<>|]+/g, "-")
     const html = wrapHtmlDocument({

@@ -4,11 +4,12 @@ import AppIcon from "../ui/AppIcon"
 import { Bell, Bot, Building2, FileText, Gauge, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users } from "lucide-react"
 
 export default function Sidebar({ aberta, onNavigate, onPerfil }) {
-  const { usuario, activeSection } = useSpectrum()
+  const { usuario, activeSection, notificacoesSubadmin } = useSpectrum()
   const secretaria = isSecretaria(usuario)
   const educador = isEducador(usuario)
   const adminMaster = isAdminMaster(usuario)
   const adminInstituicao = isAdminInstituicao(usuario)
+  const notificacoesNaoLidas = (notificacoesSubadmin || []).filter((n) => !n.lida).length
 
   function Item({ id, icon, label, badge }) {
     const ativo = activeSection === id
@@ -78,7 +79,7 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
         {adminInstituicao ? (
           <>
             <p className="nav-secao">Admin Instituição</p>
-            <Item id="admin-instituicao" icon={<AppIcon icon={Building2} />} label="Gestão da Instituição" />
+            <Item id="admin-instituicao" icon={<AppIcon icon={Building2} />} label="Gestão da Instituição" badge={notificacoesNaoLidas > 0 ? String(notificacoesNaoLidas) : null} />
           </>
         ) : null}
       </div>

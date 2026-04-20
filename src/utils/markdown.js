@@ -1,30 +1,65 @@
 export function markdownParaHTML(md) {
   if (!md) return ""
-  let html = md
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    .replace(
-      /^### (.+)$/gm,
-      '<h3 style="font-weight:700;margin:1rem 0 0.5rem;color:var(--cor-texto-principal)">$1</h3>',
-    )
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(
-      /^BOX IMPORTANTE: (.+)$/gm,
-      '<div class="destaque-box"><strong>📌 Destaque Importante</strong>$1</div>',
-    )
-    .replace(
-      /^(\d+)\. (.+)$/gm,
-      '<li style="padding:0.4rem 0.75rem;margin-bottom:0.3rem;background:var(--cor-fundo);border-radius:var(--raio-sm);list-style-type:decimal;margin-left:1.5rem">$2</li>',
-    )
-    .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
-      if (match.includes("list-style-type:decimal")) {
-        return '<ol style="padding:0;margin:0.5rem 0">' + match + "</ol>"
-      }
-      return "<ul>" + match + "</ul>"
-    })
-    .replace(/\n{2,}/g, '</p><p style="margin:0.5rem 0">')
-    .replace(/\n/g, " ")
-  return html
+  const bold = (text) => text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+  const lines = md.split(/\r?\n/)
+  const out = []
+  let listItems = []
+  let listType = null
+
+  const flushList = () => {
+    if (!listItems.length || !listType) return
+    out.push(`<${listType}>${listItems.join("")}</${listType}>`)
+    listItems = []
+    listType = null
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) {
+      flushList()
+      continue
+    }
+
+    if (line.startsWith("### ")) {
+      flushList()
+      out.push(`<h3>${bold(line.slice(4))}</h3>`)
+      continue
+    }
+
+    if (line.startsWith("## ")) {
+      flushList()
+      out.push(`<h2>${bold(line.slice(3))}</h2>`)
+      continue
+    }
+
+    if (line.startsWith("BOX IMPORTANTE:")) {
+      flushList()
+      out.push(`<div class="destaque-box"><strong>Box Importante</strong><p>${bold(line.replace("BOX IMPORTANTE:", "").trim())}</p></div>`)
+      continue
+    }
+
+    const orderedMatch = line.match(/^\d+\.\s+(.+)$/)
+    if (orderedMatch) {
+      if (listType !== "ol") flushList()
+      listType = "ol"
+      listItems.push(`<li>${bold(orderedMatch[1])}</li>`)
+      continue
+    }
+
+    const unorderedMatch = line.match(/^[-•]\s+(.+)$/)
+    if (unorderedMatch) {
+      if (listType !== "ul") flushList()
+      listType = "ul"
+      listItems.push(`<li>${bold(unorderedMatch[1])}</li>`)
+      continue
+    }
+
+    flushList()
+    out.push(`<p>${bold(line)}</p>`)
+  }
+
+  flushList()
+  return out.join("")
 }
 
 export function formatarMensagemChat(texto) {
