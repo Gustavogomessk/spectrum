@@ -259,6 +259,17 @@ export async function listarPagamentosSubadmin(subadminUserId) {
   return (data || []).map(toBoleto)
 }
 
+export async function listarPagamentosPorInstituicao(instituicaoId) {
+  if (!supabase || !instituicaoId) return []
+  const { data, error } = await supabase
+    .from("admin_payments")
+    .select("*")
+    .eq("institution_id", instituicaoId)
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return (data || []).map(toBoleto)
+}
+
 export async function confirmarPagamentoViaWebhook(paymentId) {
   const response = await fetch("/api/payments/webhook", {
     method: "POST",
@@ -277,6 +288,31 @@ export async function deletarBoleto(boletoId) {
 
 export async function deletarUsuario(usuarioId) {
   if (!supabase) return
+  
+  // Primeiro, tentar deletar do auth via API
+  try {
+    const { data } = await supabase.auth.getSession()
+    const token = data?.session?.access_token
+    
+    if (token) {
+      const response = await fetch("/api/users/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: usuarioId }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        console.error("Erro ao deletar usuário do auth:", err)
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao chamar API de deletar usuário:", err)
+  }
+  
+  // Deletar do banco de dados local
   const { error } = await supabase.from("admin_users").delete().eq("id", usuarioId)
   if (error) throw error
 }

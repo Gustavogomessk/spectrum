@@ -12,13 +12,11 @@ export default function AdminInstituicaoSection({ active }) {
     editarUsuario,
     toast,
     pagamentosSubadmin,
-    criarPagamentoSubadmin,
     confirmarPagamentoSubadmin,
     notificacoesSubadmin,
     marcarNotificacaoLida,
   } = useSpectrum()
   const [novo, setNovo] = useState({ nome: "", email: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
-  const [pagamento, setPagamento] = useState({ referencia: "", valor: "" })
 
   const instituicaoId = usuario?.schoolId || "inst-1"
 
@@ -112,42 +110,12 @@ export default function AdminInstituicaoSection({ active }) {
 
         <div className="card">
           <div className="card-cabecalho">
-            <span className="card-titulo">Pagamentos e QRCode</span>
+            <span className="card-titulo">Pagamentos</span>
           </div>
           <div className="card-corpo">
-            <div className="linha-campos">
-              <input
-                className="campo"
-                placeholder="Referência (ex: 05/2026)"
-                value={pagamento.referencia}
-                onChange={(e) => setPagamento((s) => ({ ...s, referencia: e.target.value }))}
-              />
-              <input
-                className="campo"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Valor"
-                value={pagamento.valor}
-                onChange={(e) => setPagamento((s) => ({ ...s, valor: e.target.value }))}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn btn-primario"
-              onClick={async () => {
-                if (!pagamento.referencia || !pagamento.valor) return toast("Informe referência e valor.", "erro")
-                await criarPagamentoSubadmin({ referencia: pagamento.referencia, valor: pagamento.valor })
-                setPagamento({ referencia: "", valor: "" })
-                toast("Pagamento criado com status pendente.", "sucesso")
-              }}
-            >
-              Gerar QRCode
-            </button>
-
-            <div style={{ marginTop: "1rem", border: "1px solid var(--cor-borda)", borderRadius: "0.5rem", padding: "1rem" }}>
+            <div style={{ marginBottom: "1rem", border: "1px solid var(--cor-borda)", borderRadius: "0.5rem", padding: "1rem" }}>
               <div style={{ marginBottom: "0.75rem", fontWeight: 600 }}>
-                Cobrança atual: {pagamentoAtual?.referencia || "Cobrança mock de demonstração"}
+                Cobrança atual: {pagamentoAtual?.referencia || "Nenhuma cobrança pendente"}
               </div>
               <div style={{ marginBottom: "0.75rem" }}>
                 Status:{" "}
@@ -158,24 +126,28 @@ export default function AdminInstituicaoSection({ active }) {
               <div style={{ marginBottom: "0.75rem", color: "var(--cor-texto-secundario)" }}>
                 {pagamentoAtual?.status === "pago" ? "Pagamento confirmado" : "Pagamento pendente"}
               </div>
-              <QRCodeSVG value={qrValue} size={180} includeMargin />
-              <div style={{ marginTop: "0.75rem" }}>
-                <button
-                  type="button"
-                  className="btn btn-secundario btn-sm"
-                  onClick={async () => {
-                    if (!pagamentoAtual?.id) {
-                      toast("Crie uma cobrança para habilitar confirmação real.", "info")
-                      return
-                    }
-                    await confirmarPagamentoSubadmin(pagamentoAtual.id)
-                    toast("Pagamento confirmado via webhook simulado.", "sucesso")
-                  }}
-                  disabled={pagamentoAtual?.status === "pago"}
-                >
-                  Confirmar pagamento (simular webhook)
-                </button>
-              </div>
+              {pagamentoAtual && (
+                <>
+                  <QRCodeSVG value={qrValue} size={180} includeMargin />
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <button
+                      type="button"
+                      className="btn btn-secundario btn-sm"
+                      onClick={async () => {
+                        if (!pagamentoAtual?.id) {
+                          toast("Crie uma cobrança para habilitar confirmação real.", "info")
+                          return
+                        }
+                        await confirmarPagamentoSubadmin(pagamentoAtual.id)
+                        toast("Pagamento confirmado via webhook simulado.", "sucesso")
+                      }}
+                      disabled={pagamentoAtual?.status === "pago"}
+                    >
+                      Confirmar pagamento (simular webhook)
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="tabela-wrapper">

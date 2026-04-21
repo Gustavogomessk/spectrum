@@ -13,7 +13,7 @@ import AdminGlobalSection from "../components/sections/AdminGlobalSection"
 import AdminInstituicaoSection from "../components/sections/AdminInstituicaoSection"
 import { isAdminInstituicao, isEducador } from "../utils/perfil"
 import AppIcon from "../components/ui/AppIcon"
-import { Bell, Sparkles } from "lucide-react"
+import { AlertCircle, Sparkles } from "lucide-react"
 import PlanosPopup from "../components/modals/PlanosPopup"
 
 const TITULOS = {
@@ -42,7 +42,20 @@ export default function AppShell() {
   } = useSpectrum()
   const podeAdaptar = isEducador(usuario)
   const isSubadmin = isAdminInstituicao(usuario)
-  const notificacoesNaoLidas = (notificacoesSubadmin || []).filter((n) => !n.lida).length
+  const notificacoesNaoLidas = (notificacoesSubadmin || []).filter((n) => !n.lida)
+  
+  // Determinar a cor do ícone baseado no tipo de notificação mais urgente
+  const obterCorNotificacao = () => {
+    if (notificacoesNaoLidas.length === 0) return "var(--cor-texto-secundario)"
+    
+    const temAlerta = notificacoesNaoLidas.some((n) => n.tipo === "alerta")
+    if (temAlerta) return "var(--cor-perigo)" // Vermelho
+    
+    const temSucesso = notificacoesNaoLidas.some((n) => n.tipo === "sucesso")
+    if (temSucesso) return "var(--cor-sucesso)" // Verde
+    
+    return "var(--cor-primaria)" // Azul para info
+  }
 
   useEffect(() => {
     function onEsc(e) {
@@ -90,8 +103,10 @@ export default function AppShell() {
                 aria-label="Abrir notificações"
                 style={{ position: "relative" }}
               >
-                <AppIcon icon={Bell} size={16} />
-                {notificacoesNaoLidas > 0 ? (
+                <span style={{ color: obterCorNotificacao(), display: "inline-flex", alignItems: "center" }}>
+                  <AppIcon icon={AlertCircle} size={16} />
+                </span>
+                {notificacoesNaoLidas.length > 0 ? (
                   <span
                     style={{
                       position: "absolute",
@@ -100,7 +115,7 @@ export default function AppShell() {
                       minWidth: "18px",
                       height: "18px",
                       borderRadius: "999px",
-                      background: "var(--cor-perigo)",
+                      background: obterCorNotificacao(),
                       color: "#fff",
                       fontSize: "0.7rem",
                       display: "inline-flex",
@@ -109,7 +124,7 @@ export default function AppShell() {
                       padding: "0 5px",
                     }}
                   >
-                    {notificacoesNaoLidas}
+                    {notificacoesNaoLidas.length}
                   </span>
                 ) : null}
               </button>

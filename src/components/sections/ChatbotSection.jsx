@@ -1,7 +1,9 @@
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { chatCohere } from "../../services/cohere"
 import { formatarMensagemChat } from "../../utils/markdown"
 import { useSpectrum } from "../../context/SpectrumContext"
+import { createChatConversation, fetchChatMessages, saveChatMessage } from "../../services/supabaseData"
+import { isSupabaseConfigured } from "../../services/supabaseClient"
 import AppIcon from "../ui/AppIcon"
 import { SendHorizonal } from "lucide-react"
 
@@ -38,7 +40,85 @@ export default function ChatbotSection({ active }) {
   const [mensagens, setMensagens] = useState([])
   const [input, setInput] = useState("")
   const [digitando, setDigitando] = useState(false)
+  const [conversationId, setConversationId] = useState(null)
+  const [carregando, setCarregando] = useState(true)
   const fimRef = useRef(null)
+
+  // Carregar ou criar conversa ao montar
+  useEffect(() => {
+    if (!active || !usuario) return
+
+    const inicializarConversa = async () => {
+      setCarregando(true)
+      try {
+        let convId = sessionStorage.getItem(`chat-conversation-${usuario.id}`)
+        
+        if (isSupabaseConfigured()) {
+          if (!convId) {
+            try {
+              const novaConversa = await createChatConversation(usuario.id, "Chat Educacional", usuario.schoolId)
+              if (novaConversa?.id) {
+                convId = novaConversa.id
+                sessionStorage.setItem(`chat-conversation-${usuario.id}`, convId)
+              }
+            } catch (err) {
+              console.error("Erro ao criar conversa:", err)
+              // Continuar mesmo se falhar
+            }
+          }
+          
+          // Carregar mensagens anteriores se temos convId
+          if (convId) {
+            try {
+              const msgs = await fetchChatMessages(convId)
+              if (msgs && msgs.length > 0) {
+                setMensagens(msgs)
+              }
+            } catch (err) {
+              console.error("Erro ao carregar mensagens:", err)
+            }
+          }
+        } else {
+          // Sem Supabase, usar ID local
+          if (!convId) {
+            convId = `local-${usuario.id}-${Date.now()}`
+            sessionStorage.setItem(`chat-conversation-${usuario.id}`, convId)
+          }
+          
+          // Carregar do sessionStorage para demo
+          const savedMsgs = sessionStorage.getItem(`chat-messages-${convId}`)
+          if (savedMsgs) {
+            try {
+              setMensagens(JSON.parse(savedMsgs))
+            } catch (err) {
+              console.error("Erro ao parsear mensagens locais:", err)
+            }
+          }
+        }
+
+        setConversationId(convId)
+      } catch (err) {
+        console.error("Erro ao inicializar conversa:", err)
+      } finally {
+        setCarregando(false)
+      }
+    }
+
+    inicializarConversa()
+  }, [active, usuario])
+
+  // Salvar mensagens quando mudarem
+  useEffect(() => {
+    if (!conversationId) return
+
+    if (isSupabaseConfigured()) {
+      // Já está sendo salvo na API
+      return
+    }
+
+    // Para demo sem Supabase, salvar no sessionStorage
+    sessionStorage.setItem(`chat-messages-${conversationId}`, JSON.stringify(mensagens))
+  }, [mensagens, conversationId])
 
   function scrollFim() {
     requestAnimationFrame(() => {
@@ -53,6 +133,16 @@ export default function ChatbotSection({ active }) {
     setInput("")
     const userMsg = { id: crypto.randomUUID(), papel: "usuario", texto: msg }
     setMensagens((m) => [...m, userMsg])
+    
+    // Salvar mensagem do usuário
+    if (isSupabaseConfigured() && conversationId && usuario?.id) {
+      try {
+        await saveChatMessage(conversationId, usuario.id, "user", msg, usuario.schoolId)
+      } catch (err) {
+        console.error("Erro ao salvar mensagem do usuário:", err)
+      }
+    }
+    
     setDigitando(true)
     scrollFim()
 
@@ -73,7 +163,17 @@ Mencione que o Spectrum pode automatizar adaptações quando relevante.`
         await registrarMetricasIa({ model: resposta.model, usage: resposta.usage, requestKind: "chat" })
       }
 
-      setMensagens((m) => [...m, { id: crypto.randomUUID(), papel: "ia", texto: respostaTexto }])
+      const iaMsg = { id: crypto.randomUUID(), papel: "ia", texto: respostaTexto }
+      setMensagens((m) => [...m, iaMsg])
+      
+      // Salvar resposta da IA
+      if (isSupabaseConfigured() && conversationId && usuario?.id) {
+        try {
+          await saveChatMessage(conversationId, usuario.id, "assistant", respostaTexto, usuario.schoolId)
+        } catch (err) {
+          console.error("Erro ao salvar resposta da IA:", err)
+        }
+      }
     } catch (e) {
       console.error(e)
       const tema = detectarTema(msg)
@@ -81,7 +181,17 @@ Mencione que o Spectrum pode automatizar adaptações quando relevante.`
         (tema && FALLBACKS[tema]) ||
         `Obrigado pela pergunta!\n\nPosso ajudar com estratégias para TDAH, TEA nível 1, dislexia e outras condições neurodivergentes.\n\nTente perguntar sobre:\n• Estratégias para TDAH\n• Como adaptar textos para TEA\n• Atividades inclusivas\n• Provas adaptadas\n\nOu use o módulo "Adaptar Material" para adaptar PDFs automaticamente.`
       toast("Chat offline ou chave ausente — mostrando resposta de apoio.", "info")
-      setMensagens((m) => [...m, { id: crypto.randomUUID(), papel: "ia", texto: fallback }])
+      const iaMsg = { id: crypto.randomUUID(), papel: "ia", texto: fallback }
+      setMensagens((m) => [...m, iaMsg])
+      
+      // Salvar fallback
+      if (isSupabaseConfigured() && conversationId && usuario?.id) {
+        try {
+          await saveChatMessage(conversationId, usuario.id, "assistant", fallback, usuario.schoolId)
+        } catch (err) {
+          console.error("Erro ao salvar fallback:", err)
+        }
+      }
     } finally {
       setDigitando(false)
       scrollFim()
@@ -113,21 +223,31 @@ Mencione que o Spectrum pode automatizar adaptações quando relevante.`
           </p>
         ) : null}
         <div className="chat-mensagens" id="chat-mensagens" aria-live="polite" aria-label="Conversa com a IA">
-          <div className="mensagem ia" role="article" aria-label="Mensagem da IA">
-            <div className="mensagem-avatar ia" aria-hidden="true">
-              IA
+          {carregando ? (
+            <div style={{ padding: "2rem", textAlign: "center", color: "var(--cor-texto-secundario)" }}>
+              Carregando histórico...
             </div>
-            <div className="mensagem-balao" dangerouslySetInnerHTML={{ __html: formatarMensagemChat(welcomeText) }} />
-          </div>
+          ) : (
+            <>
+              {mensagens.length === 0 && (
+                <div className="mensagem ia" role="article" aria-label="Mensagem da IA">
+                  <div className="mensagem-avatar ia" aria-hidden="true">
+                    IA
+                  </div>
+                  <div className="mensagem-balao" dangerouslySetInnerHTML={{ __html: formatarMensagemChat(welcomeText) }} />
+                </div>
+              )}
 
-          {mensagens.map((m) => (
-            <div key={m.id} className={`mensagem ${m.papel === "ia" ? "ia" : "usuario"}`} role="article" aria-label={m.papel === "ia" ? "Mensagem da IA" : "Sua mensagem"}>
-              <div className={`mensagem-avatar ${m.papel === "ia" ? "ia" : "usr"}`} aria-hidden="true">
-                {m.papel === "ia" ? "IA" : usuario?.iniciais || "EU"}
-              </div>
-              <div className="mensagem-balao" dangerouslySetInnerHTML={{ __html: formatarMensagemChat(m.texto) }} />
-            </div>
-          ))}
+              {mensagens.map((m) => (
+                <div key={m.id} className={`mensagem ${m.papel === "ia" ? "ia" : "usuario"}`} role="article" aria-label={m.papel === "ia" ? "Mensagem da IA" : "Sua mensagem"}>
+                  <div className={`mensagem-avatar ${m.papel === "ia" ? "ia" : "usr"}`} aria-hidden="true">
+                    {m.papel === "ia" ? "IA" : usuario?.iniciais || "EU"}
+                  </div>
+                  <div className="mensagem-balao" dangerouslySetInnerHTML={{ __html: formatarMensagemChat(m.texto) }} />
+                </div>
+              ))}
+            </>
+          )}
           {digitando ? (
             <div className="mensagem ia" aria-label="IA está digitando">
               <div className="mensagem-avatar ia" aria-hidden="true">
@@ -145,13 +265,15 @@ Mencione que o Spectrum pode automatizar adaptações quando relevante.`
           <div ref={fimRef} />
         </div>
 
-        <div className="sugestoes-chat" aria-label="Sugestões de perguntas rápidas">
-          {SUGESTOES.map((s) => (
-            <button key={s} type="button" className="sugestao-btn" onClick={() => enviar(s)}>
-              {s.length > 40 ? `${s.slice(0, 37)}…` : s}
-            </button>
-          ))}
-        </div>
+        {!carregando && (
+          <div className="sugestoes-chat" aria-label="Sugestões de perguntas rápidas">
+            {SUGESTOES.map((s) => (
+              <button key={s} type="button" className="sugestao-btn" onClick={() => enviar(s)}>
+                {s.length > 40 ? `${s.slice(0, 37)}…` : s}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="chat-input-area">
           <label htmlFor="chat-input" className="sr-only">

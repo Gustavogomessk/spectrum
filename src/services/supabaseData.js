@@ -329,3 +329,72 @@ export async function deleteMaterial(userId, id) {
   const { error } = await supabase.from("materiais").delete().eq("id", id)
   if (error) throw error
 }
+
+// ============ Chat Messages ============
+
+export async function createChatConversation(userId, title = "Nova conversa", schoolId = null) {
+  if (!isSupabaseConfigured() || !supabase) return null
+
+  const { data, error } = await supabase
+    .from("chat_conversations")
+    .insert({
+      user_id: userId,
+      school_id: schoolId,
+      title,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function getChatConversation(conversationId) {
+  if (!isSupabaseConfigured() || !supabase) return null
+
+  const { data, error } = await supabase
+    .from("chat_conversations")
+    .select("id, user_id, school_id, title, created_at, updated_at")
+    .eq("id", conversationId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function fetchChatMessages(conversationId) {
+  if (!isSupabaseConfigured() || !supabase) return []
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("id, role, content_markdown, created_at")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+
+  if (error) throw error
+  return (data || []).map((msg) => ({
+    id: msg.id,
+    papel: msg.role === "assistant" ? "ia" : "usuario",
+    texto: msg.content_markdown,
+    createdAt: msg.created_at,
+  }))
+}
+
+export async function saveChatMessage(conversationId, userId, role, content, schoolId = null) {
+  if (!isSupabaseConfigured() || !supabase) return null
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .insert({
+      conversation_id: conversationId,
+      user_id: userId,
+      school_id: schoolId,
+      role,
+      content_markdown: content,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

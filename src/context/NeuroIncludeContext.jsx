@@ -33,6 +33,7 @@ import {
   habilitarUsuario,
   listarNotificacoesSubadmin,
   listarPagamentosSubadmin,
+  listarPagamentosPorInstituicao,
   marcarNotificacaoComoLida,
   obterTokensCohere,
   registrarUsoIa,
@@ -136,11 +137,21 @@ export function SpectrumProvider({ children }) {
       }
       setTrialUso(atual)
       if (isSupabaseConfigured() && supabase && usuario?.id) {
-        supabase.from("trial_usage").upsert({
-          user_id: usuario.id,
-          adaptacoes_usadas: atual.adaptacoes,
-          perguntas_chat_usadas: atual.chatPerguntas,
-        })
+        supabase
+          .from("trial_usage")
+          .upsert({
+            user_id: usuario.id,
+            adaptacoes_usadas: atual.adaptacoes,
+            perguntas_chat_usadas: atual.chatPerguntas,
+          })
+          .then(({ error }) => {
+            if (error) {
+              console.error("Erro ao salvar trial_usage:", error)
+            }
+          })
+          .catch((err) => {
+            console.error("Erro ao salvar trial_usage:", err)
+          })
       }
       return true
     },
@@ -199,13 +210,13 @@ export function SpectrumProvider({ children }) {
   }, [usuario?.id, usuario?.schoolId])
 
   const refreshPagamentosSubadmin = useCallback(async () => {
-    if (!usuario?.id) {
+    if (!usuario?.schoolId) {
       setPagamentosSubadmin([])
       return
     }
-    const rows = await listarPagamentosSubadmin(usuario.id)
+    const rows = await listarPagamentosPorInstituicao(usuario.schoolId)
     setPagamentosSubadmin(rows)
-  }, [usuario?.id])
+  }, [usuario?.schoolId])
 
   useEffect(() => {
     if (!usuario) return
@@ -232,9 +243,6 @@ export function SpectrumProvider({ children }) {
     if (usuario.perfilCodigo === PERFIL.ADMIN_MASTER && activeSection === "dashboard") {
       setActiveSection("admin-global")
       return
-    }
-    if (usuario.perfilCodigo === PERFIL.ADMIN_INSTITUICAO && activeSection === "dashboard") {
-      setActiveSection("admin-instituicao")
     }
   }, [usuario, activeSection])
 
@@ -353,6 +361,26 @@ export function SpectrumProvider({ children }) {
       if (error) {
         toast(mensagemErroSupabaseAuth(error), "erro")
         return { ok: false }
+      }
+
+      // Registrar o usuário em admin_users para que apareça na gestão
+      if (data.user) {
+        try {
+          await supabase.from("admin_users").insert({
+            id: data.user.id,
+            full_name: nome,
+            email: email.trim(),
+            role: papel || "usuario",
+            institution_id: schoolId || null,
+            account_type: schoolId ? "institution" : "trial",
+            active: true,
+            licenses: 1,
+            license_type: "Basic",
+          }).select().single()
+        } catch (err) {
+          console.error("Erro ao registrar usuário em admin_users:", err)
+          // Continuar mesmo se falhar, pois o usuário já foi criado em auth
+        }
       }
 
       if (data.session) {
