@@ -202,7 +202,7 @@ export default function AdminGlobalSection({ active, activeSection }) {
     const instituicaoSelecionada = instituicoes.find((i) => i.id === boleto.instituicaoId)
     if (!instituicaoSelecionada) return ""
     const usuariosDaInstituicao = usuarios.filter((u) => u.instituicaoId === boleto.instituicaoId && u.ativo)
-    const valor = calcularValorBoleto(instituicaoSelecionada.tipoInstituicao || "Pessoal", usuariosDaInstituicao)
+    const valor = calcularValorBoleto(instituicaoSelecionada.plano || "Pessoal", usuariosDaInstituicao)
     return valor.toString()
   }, [boleto.instituicaoId, instituicoes, usuarios])
 
