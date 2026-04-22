@@ -15,13 +15,14 @@ export default function PlanosPopup({ aberto, onFechar, motivo }) {
           </p>
           <div className="card" style={{ marginBottom: "0.75rem" }}>
             <div className="card-corpo">
-              <strong>Plano Individual Start</strong>
-              <p className="texto-mudo">30 adaptações + 120 perguntas IA / mês</p>
+              <strong>Plano Pessoal</strong>
+              <p className="texto-mudo">5 Usuários diferentes + 30 adaptações/mês</p>
             </div>
           </div>
           <div className="card">
             <div className="card-corpo">
-              <strong>Plano Individual Pro</strong>
+              <strong>Plano Enterpraise</strong>
+              <p className="texto-mudo">50 Usuários diferentes + 100 adaptações/mês</p>
               <p className="texto-mudo">Uso ampliado + prioridade no suporte</p>
             </div>
           </div>
