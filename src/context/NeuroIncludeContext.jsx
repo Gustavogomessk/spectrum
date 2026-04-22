@@ -24,13 +24,17 @@ import {
   deletarInstituicao,
   deletarUsuario,
   desabilitarInstituicao,
+  desabilitarInstituicaoComMembros,
   desabilitarUsuario,
+  desabilitarUsuarioComInstituicao,
   editarInstituicao as editarInstituicaoStore,
   editarUsuario,
   enviarNotificacao,
   getAdminData,
   habilitarInstituicao,
+  habilitarInstituicaoComMembros,
   habilitarUsuario,
+  habilitarUsuarioComInstituicao,
   listarNotificacoesSubadmin,
   listarPagamentosSubadmin,
   listarPagamentosPorInstituicao,
@@ -38,6 +42,7 @@ import {
   obterTokensCohere,
   registrarUsoIa,
   salvarPdfGerado,
+  verificarStatusUsuario,
 } from "../services/adminData"
 import { mensagemErroSupabaseAuth } from "../utils/authErrors"
 import { isErroRelacionamentoPostgrest, isErroTabelaAusente, resumoErroSupabase } from "../utils/supabaseErrors"
@@ -263,11 +268,22 @@ export function SpectrumProvider({ children }) {
         iniciais: iniciaisDe(meta.nome || s.user.email || "NI"),
       })
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
       if (!session?.user) {
         setUsuario(null)
         return
       }
+      
+      // Verificar se o usuário ou sua instituição estão bloqueados
+      const statusVerificacao = await verificarStatusUsuario(session.user.id, session.user.email)
+      if (statusVerificacao.bloqueado) {
+        // Fazer logout se o usuário estiver bloqueado
+        await supabase.auth.signOut()
+        toast(statusVerificacao.motivo || "Seu acesso foi revogado.", "erro")
+        setUsuario(null)
+        return
+      }
+      
       const meta = session.user.user_metadata || {}
       setUsuario({
         id: session.user.id,
@@ -280,7 +296,7 @@ export function SpectrumProvider({ children }) {
       })
     })
     return () => sub.subscription.unsubscribe()
-  }, [])
+  }, [toast])
 
   const loginDemo = useCallback(
     (email, senha, role) => {
@@ -551,6 +567,26 @@ export function SpectrumProvider({ children }) {
     await refreshAdminData()
   }, [refreshAdminData])
 
+  const desabilitarInstituicaoComMembrosFn = useCallback(async (instituicaoId) => {
+    await desabilitarInstituicaoComMembros(instituicaoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
+
+  const habilitarInstituicaoComMembrosFn = useCallback(async (instituicaoId) => {
+    await habilitarInstituicaoComMembros(instituicaoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
+
+  const desabilitarUsuarioComInstituicaoFn = useCallback(async (usuarioId, instituicaoId = null) => {
+    await desabilitarUsuarioComInstituicao(usuarioId, instituicaoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
+
+  const habilitarUsuarioComInstituicaoFn = useCallback(async (usuarioId, instituicaoId = null) => {
+    await habilitarUsuarioComInstituicao(usuarioId, instituicaoId)
+    await refreshAdminData()
+  }, [refreshAdminData])
+
   const criarBoletoFn = useCallback(async (payload) => {
     await criarBoleto(payload)
     await refreshAdminData()
@@ -670,8 +706,12 @@ export function SpectrumProvider({ children }) {
       atualizarStatusBoleto,
       desabilitarInstituicao: desabilitarInstituicaoFn,
       habilitarInstituicao: habilitarInstituicaoFn,
+      desabilitarInstituicaoComMembros: desabilitarInstituicaoComMembrosFn,
+      habilitarInstituicaoComMembros: habilitarInstituicaoComMembrosFn,
       desabilitarUsuario: desabilitarUsuarioFn,
       habilitarUsuario: habilitarUsuarioFn,
+      desabilitarUsuarioComInstituicao: desabilitarUsuarioComInstituicaoFn,
+      habilitarUsuarioComInstituicao: habilitarUsuarioComInstituicaoFn,
       criarBoleto: criarBoletoFn,
       deletarBoleto: deletarBoletoFn,
       deletarUsuario: deletarUsuarioFn,

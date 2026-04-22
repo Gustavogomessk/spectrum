@@ -401,6 +401,170 @@ export async function marcarNotificacaoComoLida({ notificationId, userId }) {
   if (error) throw error
 }
 
+export async function desabilitarInstituicaoComMembros(instituicaoId) {
+  if (!supabase || !instituicaoId) return
+  
+  try {
+    // Primeiro, desabilitar todos os usuários dessa instituição
+    const { error: errorUsers } = await supabase
+      .from("admin_users")
+      .update({ active: false })
+      .eq("institution_id", instituicaoId)
+    
+    if (errorUsers) throw errorUsers
+    
+    // Depois, desabilitar a instituição
+    const { error: errorInst } = await supabase
+      .from("admin_institutions")
+      .update({ active: false })
+      .eq("id", instituicaoId)
+    
+    if (errorInst) throw errorInst
+  } catch (error) {
+    console.error("Erro ao desabilitar instituição com membros:", error)
+    throw error
+  }
+}
+
+export async function habilitarInstituicaoComMembros(instituicaoId) {
+  if (!supabase || !instituicaoId) return
+  
+  try {
+    // Primeiro, habilitar todos os usuários dessa instituição
+    const { error: errorUsers } = await supabase
+      .from("admin_users")
+      .update({ active: true })
+      .eq("institution_id", instituicaoId)
+    
+    if (errorUsers) throw errorUsers
+    
+    // Depois, habilitar a instituição
+    const { error: errorInst } = await supabase
+      .from("admin_institutions")
+      .update({ active: true })
+      .eq("id", instituicaoId)
+    
+    if (errorInst) throw errorInst
+  } catch (error) {
+    console.error("Erro ao habilitar instituição com membros:", error)
+    throw error
+  }
+}
+
+export async function desabilitarUsuarioComInstituicao(usuarioId, instituicaoId = null) {
+  if (!supabase || !usuarioId) return
+  
+  try {
+    // Desabilitar o usuário
+    const { error: errorUser } = await supabase
+      .from("admin_users")
+      .update({ active: false })
+      .eq("id", usuarioId)
+    
+    if (errorUser) throw errorUser
+    
+    // Se o usuário tem uma instituição, desabilitar todos os membros dessa instituição
+    if (instituicaoId) {
+      const { error: errorMembers } = await supabase
+        .from("admin_users")
+        .update({ active: false })
+        .eq("institution_id", instituicaoId)
+      
+      if (errorMembers) throw errorMembers
+    }
+  } catch (error) {
+    console.error("Erro ao desabilitar usuário com instituição:", error)
+    throw error
+  }
+}
+
+export async function habilitarUsuarioComInstituicao(usuarioId, instituicaoId = null) {
+  if (!supabase || !usuarioId) return
+  
+  try {
+    // Habilitar o usuário
+    const { error: errorUser } = await supabase
+      .from("admin_users")
+      .update({ active: true })
+      .eq("id", usuarioId)
+    
+    if (errorUser) throw errorUser
+    
+    // Se o usuário tem uma instituição, habilitar todos os membros dessa instituição
+    if (instituicaoId) {
+      const { error: errorMembers } = await supabase
+        .from("admin_users")
+        .update({ active: true })
+        .eq("institution_id", instituicaoId)
+      
+      if (errorMembers) throw errorMembers
+    }
+  } catch (error) {
+    console.error("Erro ao habilitar usuário com instituição:", error)
+    throw error
+  }
+}
+
+export async function verificarStatusUsuario(userId, userEmail) {
+  if (!supabase || (!userId && !userEmail)) {
+    return { bloqueado: false, motivo: "" }
+  }
+  
+  try {
+    // Procurar o usuário em admin_users
+    let query = supabase.from("admin_users").select("*")
+    
+    if (userId) {
+      query = query.eq("id", userId)
+    } else {
+      query = query.eq("email", userEmail)
+    }
+    
+    const { data: usuarios, error: errorUser } = await query.limit(1).maybeSingle()
+    
+    if (errorUser) {
+      console.error("Erro ao verificar status do usuário:", errorUser)
+      return { bloqueado: false, motivo: "" }
+    }
+    
+    // Se o usuário não foi encontrado em admin_users, ele não está bloqueado
+    if (!usuarios) {
+      return { bloqueado: false, motivo: "" }
+    }
+    
+    // Verificar se o usuário está inativo
+    if (!usuarios.active) {
+      return { bloqueado: true, motivo: "Sua conta foi bloqueada pelo administrador." }
+    }
+    
+    // Se o usuário tem instituição, verificar se a instituição está bloqueada
+    if (usuarios.institution_id) {
+      const { data: instituicao, error: errorInst } = await supabase
+        .from("admin_institutions")
+        .select("*")
+        .eq("id", usuarios.institution_id)
+        .limit(1)
+        .maybeSingle()
+      
+      if (errorInst) {
+        console.error("Erro ao verificar status da instituição:", errorInst)
+        return { bloqueado: false, motivo: "" }
+      }
+      
+      // Se a instituição não está ativa, o usuário está bloqueado
+      if (instituicao && !instituicao.active) {
+        return { bloqueado: true, motivo: "A instituição foi bloqueada pelo administrador." }
+      }
+    }
+    
+    // Usuário e instituição estão ativos
+    return { bloqueado: false, motivo: "" }
+  } catch (error) {
+    console.error("Erro ao verificar status do usuário:", error)
+    return { bloqueado: false, motivo: "" }
+  }
+}
+
 export async function salvarPdfGerado({ materialId, userId, pdfUrl }) {
   if (!supabase || !materialId || !userId || !pdfUrl) return
   const { error } = await supabase.from("generated_pdfs").insert({

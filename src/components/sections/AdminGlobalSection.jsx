@@ -15,8 +15,12 @@ export default function AdminGlobalSection({ active, activeSection }) {
     atualizarStatusBoleto,
     desabilitarInstituicao,
     habilitarInstituicao,
+    desabilitarInstituicaoComMembros,
+    habilitarInstituicaoComMembros,
     desabilitarUsuario,
     habilitarUsuario,
+    desabilitarUsuarioComInstituicao,
+    habilitarUsuarioComInstituicao,
     criarBoleto,
     deletarBoleto,
     deletarUsuario,
@@ -414,11 +418,11 @@ export default function AdminGlobalSection({ active, activeSection }) {
                             className={`btn ${i.ativo ? "btn-perigo" : "btn-secundario"} btn-sm`}
                             onClick={async () => {
                               if (i.ativo) {
-                                await desabilitarInstituicao(i.id)
-                                toast("Instituição desabilitada.", "sucesso")
+                                await desabilitarInstituicaoComMembros(i.id)
+                                toast("Instituição e seus membros foram bloqueados.", "sucesso")
                               } else {
-                                await habilitarInstituicao(i.id)
-                                toast("Instituição habilitada.", "sucesso")
+                                await habilitarInstituicaoComMembros(i.id)
+                                toast("Instituição e seus membros foram desbloqueados.", "sucesso")
                               }
                             }}
                           >
@@ -718,11 +722,11 @@ export default function AdminGlobalSection({ active, activeSection }) {
                               className={`btn ${u.ativo ? "btn-perigo" : "btn-secundario"} btn-sm`}
                               onClick={async () => {
                                 if (u.ativo) {
-                                  await desabilitarUsuario(u.id)
-                                  toast("Usuário bloqueado.", "sucesso")
+                                  await desabilitarUsuarioComInstituicao(u.id, u.instituicaoId)
+                                  toast("Usuário e membros da instituição foram bloqueados.", "sucesso")
                                 } else {
-                                  await habilitarUsuario(u.id)
-                                  toast("Usuário desbloqueado.", "sucesso")
+                                  await habilitarUsuarioComInstituicao(u.id, u.instituicaoId)
+                                  toast("Usuário e membros da instituição foram desbloqueados.", "sucesso")
                                 }
                               }}
                             >
