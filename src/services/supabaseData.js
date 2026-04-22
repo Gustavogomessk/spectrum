@@ -272,7 +272,7 @@ export async function deleteAluno(userId, id) {
   if (error) throw error
 }
 
-export async function insertMaterial(userId, row) {
+export async function insertMaterial(userId, row, schoolId = null) {
   if (!isSupabaseConfigured() || !supabase) {
     const list = await fetchMateriais(userId)
     const novo = {
@@ -293,6 +293,7 @@ export async function insertMaterial(userId, row) {
     .from("materiais")
     .insert({
       user_id: userId,
+      school_id: schoolId || null,
       aluno_id: row.aluno_id || null,
       nome: row.nome,
       perfil: row.perfil,

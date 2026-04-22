@@ -605,11 +605,11 @@ export function SpectrumProvider({ children }) {
 
   const salvarMaterialApi = useCallback(
     async (row) => {
-      const created = await insertMaterial(userId, row)
+      const created = await insertMaterial(userId, row, usuario?.schoolId || null)
       await refresh()
       return created
     },
-    [userId, refresh],
+    [userId, refresh, usuario?.schoolId],
   )
 
   const removerMaterialApi = useCallback(
