@@ -6,6 +6,35 @@ function isValidUUID(uuid) {
   return uuidRegex.test(String(uuid))
 }
 
+// Converts institution_id (from admin_institutions) to school_id (from schools table)
+// This handles the mapping between old and new schema
+async function getSchoolIdFromInstitutionId(institutionId) {
+  if (!institutionId || !isValidUUID(institutionId) || !isSupabaseConfigured() || !supabase) {
+    return null
+  }
+
+  try {
+    // Try to find existing mapping
+    const { data, error } = await supabase
+      .from("institution_school_mapping")
+      .select("school_id")
+      .eq("institution_id", institutionId)
+      .maybeSingle()
+
+    if (!error && data) {
+      console.log("[getSchoolIdFromInstitutionId] Found mapping:", institutionId, "→", data.school_id)
+      return data.school_id
+    }
+
+    // If no mapping exists, return the institutionId itself (might be a direct school_id)
+    console.log("[getSchoolIdFromInstitutionId] No mapping found, returning input:", institutionId)
+    return institutionId
+  } catch (err) {
+    console.error("[getSchoolIdFromInstitutionId] Error:", err)
+    return institutionId
+  }
+}
+
 const DEMO_ALUNOS = [
   {
     id: "1",
@@ -169,9 +198,12 @@ export async function updateAluno(userId, aluno, schoolId = null) {
     laudo_url: aluno.laudo_url || null,
   }
 
-  // If schoolId is provided and valid UUID, add it to update
+  // Convert institutionId to schoolId if needed (handles old schema mapping)
   if (isValidUUID(schoolId)) {
-    updateData.school_id = schoolId
+    const resolvedSchoolId = await getSchoolIdFromInstitutionId(schoolId)
+    if (isValidUUID(resolvedSchoolId)) {
+      updateData.school_id = resolvedSchoolId
+    }
   }
 
   const { data, error } = await supabase
@@ -258,9 +290,15 @@ export async function insertAluno(userId, aluno, schoolId = null) {
     return novo
   }
 
+  // Convert institutionId to schoolId if needed (handles old schema mapping)
+  let resolvedSchoolId = schoolId
+  if (isValidUUID(schoolId)) {
+    resolvedSchoolId = await getSchoolIdFromInstitutionId(schoolId)
+  }
+
   // Only save schoolId if it's a valid UUID
-  const validSchoolId = isValidUUID(schoolId) ? schoolId : null
-  console.log("[insertAluno] schoolId input:", schoolId, "→ validSchoolId:", validSchoolId)
+  const validSchoolId = isValidUUID(resolvedSchoolId) ? resolvedSchoolId : null
+  console.log("[insertAluno] schoolId input:", schoolId, "→ resolved:", resolvedSchoolId, "→ validSchoolId:", validSchoolId)
 
   const { data, error } = await supabase
     .from("alunos")
@@ -318,8 +356,14 @@ export async function insertMaterial(userId, row, schoolId = null) {
     return novo
   }
 
+  // Convert institutionId to schoolId if needed (handles old schema mapping)
+  let resolvedSchoolId = schoolId
+  if (isValidUUID(schoolId)) {
+    resolvedSchoolId = await getSchoolIdFromInstitutionId(schoolId)
+  }
+
   // Only save schoolId if it's a valid UUID
-  const validSchoolId = isValidUUID(schoolId) ? schoolId : null
+  const validSchoolId = isValidUUID(resolvedSchoolId) ? resolvedSchoolId : null
 
   const { data, error } = await supabase
     .from("materiais")
