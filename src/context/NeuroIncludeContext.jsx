@@ -190,7 +190,7 @@ export function SpectrumProvider({ children }) {
   const refresh = useCallback(async () => {
     if (!usuario) return
     try {
-      const [a, m] = await Promise.all([fetchAlunos(userId), fetchMateriais(userId)])
+      const [a, m] = await Promise.all([fetchAlunos(userId, usuario?.schoolId || null), fetchMateriais(userId, usuario?.schoolId || null)])
       setAlunos(a)
       setMateriais(m)
       toastSyncJaExibido.current = false

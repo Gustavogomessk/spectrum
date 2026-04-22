@@ -61,7 +61,7 @@ function storageKeyMateriais(uid) {
   return `spectrum_materiais_${uid}`
 }
 
-export async function fetchAlunos(userId) {
+export async function fetchAlunos(userId, schoolId = null) {
   if (!isSupabaseConfigured() || !supabase) {
     const raw = sessionStorage.getItem(storageKeyAlunos(userId))
     if (raw) return JSON.parse(raw)
@@ -69,10 +69,24 @@ export async function fetchAlunos(userId) {
     return DEMO_ALUNOS
   }
 
-  const { data, error } = await supabase
-    .from("alunos")
-    .select("*")
-    .order("created_at", { ascending: false })
+  let query
+  if (schoolId) {
+    // Fetch alunos created by user OR alunos from their school
+    query = supabase
+      .from("alunos")
+      .select("*")
+      .or(`user_id.eq.${userId},school_id.eq.${schoolId}`)
+      .order("created_at", { ascending: false })
+  } else {
+    // No school: just fetch user's own alunos
+    query = supabase
+      .from("alunos")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
   return (data || []).map((row) => ({
@@ -88,7 +102,7 @@ export async function fetchAlunos(userId) {
   }))
 }
 
-export async function fetchMateriais(userId) {
+export async function fetchMateriais(userId, schoolId = null) {
   if (!isSupabaseConfigured() || !supabase) {
     const raw = sessionStorage.getItem(storageKeyMateriais(userId))
     if (raw) return JSON.parse(raw)
@@ -96,31 +110,72 @@ export async function fetchMateriais(userId) {
     return DEMO_MATERIAIS
   }
 
-  const { data: mats, error: errMats } = await supabase.from("materiais").select("*").order("created_at", { ascending: false })
+  // Build query: fetch materials created by user OR materials from their school
+  let query = supabase.from("materiais").select("*").order("created_at", { ascending: false })
 
-  if (errMats) throw errMats
+  // The RLS policy should handle filtering, but we can also filter explicitly
+  // to ensure we get school materials
+  if (schoolId) {
+    // Fetch materials owned by user OR belonging to the school
+    const { data: mats, error: errMats } = await supabase
+      .from("materiais")
+      .select("*")
+      .or(`user_id.eq.${userId},school_id.eq.${schoolId}`)
+      .order("created_at", { ascending: false })
 
-  const { data: aluRows, error: errAlu } = await supabase.from("alunos").select("id, nome, diagnostico")
+    if (errMats) throw errMats
 
-  if (errAlu) throw errAlu
+    const { data: aluRows, error: errAlu } = await supabase.from("alunos").select("id, nome, diagnostico")
+    if (errAlu) throw errAlu
 
-  const porId = new Map((aluRows || []).map((a) => [a.id, a]))
+    const porId = new Map((aluRows || []).map((a) => [a.id, a]))
 
-  return (mats || []).map((row) => {
-    const alunoRow = row.aluno_id ? porId.get(row.aluno_id) : null
-    return {
-      id: row.id,
-      nome: row.nome,
-      aluno: alunoRow?.nome || "—",
-      perfil: row.perfil || alunoRow?.diagnostico || "—",
-      data: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—",
-      conteudo_html: row.conteudo_html,
-      pdf_original_nome: row.pdf_original_nome || "",
-      pdf_adaptado_nome: row.pdf_adaptado_nome || "",
-      pdf_original_path: row.pdf_original_path || null,
-      pdf_adaptado_path: row.pdf_adaptado_path || null,
-    }
-  })
+    return (mats || []).map((row) => {
+      const alunoRow = row.aluno_id ? porId.get(row.aluno_id) : null
+      return {
+        id: row.id,
+        nome: row.nome,
+        aluno: alunoRow?.nome || "—",
+        perfil: row.perfil || alunoRow?.diagnostico || "—",
+        data: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—",
+        conteudo_html: row.conteudo_html,
+        pdf_original_nome: row.pdf_original_nome || "",
+        pdf_adaptado_nome: row.pdf_adaptado_nome || "",
+        pdf_original_path: row.pdf_original_path || null,
+        pdf_adaptado_path: row.pdf_adaptado_path || null,
+      }
+    })
+  } else {
+    // No school: just fetch user's own materials
+    const { data: mats, error: errMats } = await supabase
+      .from("materiais")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    if (errMats) throw errMats
+
+    const { data: aluRows, error: errAlu } = await supabase.from("alunos").select("id, nome, diagnostico")
+    if (errAlu) throw errAlu
+
+    const porId = new Map((aluRows || []).map((a) => [a.id, a]))
+
+    return (mats || []).map((row) => {
+      const alunoRow = row.aluno_id ? porId.get(row.aluno_id) : null
+      return {
+        id: row.id,
+        nome: row.nome,
+        aluno: alunoRow?.nome || "—",
+        perfil: row.perfil || alunoRow?.diagnostico || "—",
+        data: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—",
+        conteudo_html: row.conteudo_html,
+        pdf_original_nome: row.pdf_original_nome || "",
+        pdf_adaptado_nome: row.pdf_adaptado_nome || "",
+        pdf_original_path: row.pdf_original_path || null,
+        pdf_adaptado_path: row.pdf_adaptado_path || null,
+      }
+    })
+  }
 }
 
 export async function updateAluno(userId, aluno) {
