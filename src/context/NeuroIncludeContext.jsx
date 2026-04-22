@@ -486,6 +486,29 @@ export function SpectrumProvider({ children }) {
           console.error("Erro ao registrar usuário em admin_users:", err)
           // Continuar mesmo se falhar, pois o usuário já foi criado em auth
         }
+
+        // Add to school_members if institutional user
+        if (schoolId) {
+          try {
+            const { data: sess } = await supabase.auth.getSession()
+            const token = sess?.session?.access_token
+            if (token) {
+              await apiFetch("/api/institutions/add-member", {
+                method: "POST",
+                token,
+                body: {
+                  userId: data.user.id,
+                  schoolId: schoolId,
+                  role: papel === "subadmin" ? "member" : "member",
+                },
+              })
+              console.log(`[cadastro] Usuário ${data.user.id} adicionado aos membros da instituição`)
+            }
+          } catch (err) {
+            console.error("[cadastro] Erro ao adicionar usuário aos membros:", err)
+            // Continuar mesmo se falhar
+          }
+        }
       }
 
       if (data.session) {
@@ -683,6 +706,29 @@ export function SpectrumProvider({ children }) {
           })
         } catch (err) {
           console.error("Erro ao registrar SubAdmin em admin_users:", err)
+        }
+
+        // Add user to school_members if institution
+        if (payload.instituicaoId) {
+          try {
+            const { data: sess } = await supabase.auth.getSession()
+            const token = sess?.session?.access_token
+            if (!token) throw new Error("not_authenticated")
+
+            await apiFetch("/api/institutions/add-member", {
+              method: "POST",
+              token,
+              body: {
+                userId: newUserId,
+                schoolId: payload.instituicaoId,
+                role: "member",
+              },
+            })
+            console.log("Usuário adicionado aos membros da instituição")
+          } catch (err) {
+            console.error("Erro ao adicionar usuário aos membros:", err)
+            // Continue mesmo se falhar, pois o usuário foi criado
+          }
         }
 
         await refreshAdminData()
