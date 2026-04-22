@@ -389,11 +389,33 @@ export function SpectrumProvider({ children }) {
         toast("Supabase não configurado. Crie o arquivo .env com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.", "erro")
         return
       }
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
       if (error) {
         toast(mensagemErroSupabaseAuth(error), "erro")
         return
       }
+
+      // Verificar se a conta foi bloqueada pelo admin global
+      try {
+        const user = data?.user ?? (await supabase.auth.getUser()).data?.user
+        const userId = user?.id
+        if (userId) {
+          const { data: adminRow, error: adminErr } = await supabase.from("admin_users").select("active").eq("id", userId).single()
+          if (!adminErr && adminRow && adminRow.active === false) {
+            // Encerrar sessão local e informar usuário
+            try {
+              await supabase.auth.signOut()
+            } catch (e) {
+              console.warn('Erro ao signOut após bloqueio:', e)
+            }
+            toast("Conta bloqueada pelo administrador. Contate o suporte.", "erro")
+            return
+          }
+        }
+      } catch (checkErr) {
+        console.warn('Erro ao checar status do usuário após login:', checkErr)
+      }
+
       toast("Login realizado com sucesso.", "sucesso")
     },
     [toast],
