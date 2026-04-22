@@ -143,7 +143,7 @@ export default function AdminInstituicaoSection({ active }) {
               <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "var(--cor-fundo-secundario)", borderRadius: "0.5rem" }}>
                 <h4 style={{ marginBottom: "0.75rem", fontWeight: 600 }}>Resumo do Cálculo:</h4>
                 <div style={{ marginBottom: "0.5rem" }}>
-                  <strong>Tipo de Instituição:</strong> {tipoInstituicaoAtual}
+                  <strong>Tipo de Instituição:</strong> {instituicao?.plano === "Enterprise" ? "Enterprise" : "Pessoal"}
                 </div>
                 <div style={{ marginBottom: "0.5rem" }}>
                   <strong>Preço Base:</strong> {formatarMoeda(instituicao?.plano === "Enterprise" ? 100 : 50)}
