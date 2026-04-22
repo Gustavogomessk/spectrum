@@ -1,5 +1,11 @@
 import { supabase, isSupabaseConfigured } from "./supabaseClient"
 
+function isValidUUID(uuid) {
+  if (!uuid) return false
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(String(uuid))
+}
+
 const DEMO_ALUNOS = [
   {
     id: "1",
@@ -163,8 +169,8 @@ export async function updateAluno(userId, aluno, schoolId = null) {
     laudo_url: aluno.laudo_url || null,
   }
 
-  // If schoolId is provided and not already set, add it to update
-  if (schoolId) {
+  // If schoolId is provided and valid UUID, add it to update
+  if (isValidUUID(schoolId)) {
     updateData.school_id = schoolId
   }
 
@@ -252,11 +258,14 @@ export async function insertAluno(userId, aluno, schoolId = null) {
     return novo
   }
 
+  // Only save schoolId if it's a valid UUID
+  const validSchoolId = isValidUUID(schoolId) ? schoolId : null
+
   const { data, error } = await supabase
     .from("alunos")
     .insert({
       user_id: userId,
-      school_id: schoolId || null,
+      school_id: validSchoolId,
       matricula: aluno.matricula || null,
       nome: aluno.nome,
       nascimento: aluno.nascimento || null,
@@ -308,11 +317,14 @@ export async function insertMaterial(userId, row, schoolId = null) {
     return novo
   }
 
+  // Only save schoolId if it's a valid UUID
+  const validSchoolId = isValidUUID(schoolId) ? schoolId : null
+
   const { data, error } = await supabase
     .from("materiais")
     .insert({
       user_id: userId,
-      school_id: schoolId || null,
+      school_id: validSchoolId,
       aluno_id: row.aluno_id || null,
       nome: row.nome,
       perfil: row.perfil,
