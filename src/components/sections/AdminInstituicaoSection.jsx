@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react"
 import { useSpectrum } from "../../context/SpectrumContext"
 import { QRCodeSVG } from "qrcode.react"
+import { AlertCircle, Info, CheckCircle } from "lucide-react"
+import AppIcon from "../ui/AppIcon"
 
 const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria"]
 
@@ -17,6 +19,33 @@ export default function AdminInstituicaoSection({ active }) {
     marcarNotificacaoLida,
   } = useSpectrum()
   const [novo, setNovo] = useState({ nome: "", email: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
+
+  // Helpers para ícones e cores de notificação
+  const getIconForNotificationType = (tipo) => {
+    switch (tipo) {
+      case "alerta":
+        return AlertCircle
+      case "info":
+        return Info
+      case "sucesso":
+        return CheckCircle
+      default:
+        return AlertCircle
+    }
+  }
+
+  const getColorForNotificationType = (tipo) => {
+    switch (tipo) {
+      case "alerta":
+        return "#ff6b6b"
+      case "info":
+        return "#4dabf7"
+      case "sucesso":
+        return "#51cf66"
+      default:
+        return "#4dabf7"
+    }
+  }
 
   const instituicaoId = usuario?.schoolId || "inst-1"
 
@@ -196,29 +225,43 @@ export default function AdminInstituicaoSection({ active }) {
                 </tr>
               </thead>
               <tbody>
-                {notificacoesSubadmin.map((n) => (
-                  <tr key={n.id}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{n.titulo}</div>
-                      <div className="texto-mudo" style={{ fontSize: "0.8rem" }}>
-                        {n.conteudo}
-                      </div>
-                    </td>
-                    <td>{n.tipo}</td>
-                    <td>
-                      <span className={`badge ${n.lida ? "badge-verde" : "badge-ambar"}`}>{n.lida ? "Lida" : "Não lida"}</span>
-                    </td>
-                    <td>
-                      {!n.lida ? (
-                        <button type="button" className="btn btn-secundario btn-sm" onClick={() => marcarNotificacaoLida(n.id)}>
-                          Marcar como lida
-                        </button>
-                      ) : (
-                        <span className="texto-mudo">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {notificacoesSubadmin.map((n) => {
+                  const IconComponent = getIconForNotificationType(n.tipo)
+                  const color = getColorForNotificationType(n.tipo)
+                  return (
+                    <tr key={n.id}>
+                      <td>
+                        <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                          <AppIcon icon={IconComponent} size={18} style={{ color, flexShrink: 0, marginTop: "0.25rem" }} />
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{n.titulo}</div>
+                            <div className="texto-mudo" style={{ fontSize: "0.8rem" }}>
+                              {n.conteudo}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <AppIcon icon={IconComponent} size={16} style={{ color }} />
+                          {n.tipo}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${n.lida ? "badge-verde" : "badge-ambar"}`}>{n.lida ? "Lida" : "Não lida"}</span>
+                      </td>
+                      <td>
+                        {!n.lida ? (
+                          <button type="button" className="btn btn-secundario btn-sm" onClick={() => marcarNotificacaoLida(n.id)}>
+                            Marcar como lida
+                          </button>
+                        ) : (
+                          <span className="texto-mudo">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
                 {notificacoesSubadmin.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="texto-mudo">
