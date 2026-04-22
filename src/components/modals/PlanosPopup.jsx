@@ -17,12 +17,15 @@ export default function PlanosPopup({ aberto, onFechar, motivo }) {
             <div className="card-corpo">
               <strong>Plano Pessoal</strong>
               <p className="texto-mudo">5 Usuários diferentes + 30 adaptações/mês</p>
+              <p className="texto-mudo">100 perguntas com IA / mês</p>
+              <p className="texto-mudo">Uso básico + suporte via email</p>
             </div>
           </div>
           <div className="card">
             <div className="card-corpo">
               <strong>Plano Enterpraise</strong>
               <p className="texto-mudo">50 Usuários diferentes + 100 adaptações/mês</p>
+              <p className="texto-mudo">1000 perguntas com IA / mês</p>
               <p className="texto-mudo">Uso ampliado + prioridade no suporte</p>
             </div>
           </div>
