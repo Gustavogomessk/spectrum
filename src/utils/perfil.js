@@ -100,8 +100,6 @@ export function canAccessChatbot(usuario) {
   const licenca = usuario?.tipoLicenca
   if (usuario?.tipoLicenca === "Sem Licença") return false
   // Allow trial users full access to Chatbot
-  
-  
   return licenca === "PRO"
 }
 

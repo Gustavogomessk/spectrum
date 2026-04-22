@@ -541,29 +541,31 @@ export function SpectrumProvider({ children }) {
           const token = sess?.session?.access_token
           if (!token) throw new Error("not_authenticated")
 
-          const fileReader = new FileReader()
-          const fileBase64 = await new Promise((resolve, reject) => {
-            fileReader.onload = () => {
-              const base64 = fileReader.result.split(",")[1]
-              resolve(base64)
-            }
-            fileReader.onerror = reject
-            fileReader.readAsDataURL(payload.laudoFile)
-          })
-
           const storagePath = `escola-${schoolId}/user-${userId}/aluno-${payload.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
-          const row = await apiFetch("/api/alunos/upload-laudo", {
-            method: "POST",
-            token,
-            body: {
-              fileBase64,
+          
+          // Upload directly to Supabase Storage (avoids Vercel 6MB limit)
+          console.log("[salvarAlunoApi] Uploading file to storage:", storagePath)
+          const { error: uploadErr, data: uploadData } = await supabase.storage
+            .from("uploads-files")
+            .upload(storagePath, payload.laudoFile, { upsert: true, contentType: "application/pdf" })
+
+          if (uploadErr) throw uploadErr
+
+          // Register file metadata in database
+          const { data: fileData, error: registerErr } = await supabase
+            .from("files")
+            .insert({
+              school_id: usuario?.schoolId || null,
+              user_id: userId,
               filename: payload.laudoFile.name,
-              schoolId: usuario?.schoolId || null,
-              alunoId: payload.id,
-              storagePath,
-            },
-          })
-          await patchAluno(userId, payload.id, { laudo_url: row.file.storage_path })
+              storage_path: storagePath,
+            })
+            .select()
+            .single()
+
+          if (!registerErr && fileData) {
+            await patchAluno(userId, payload.id, { laudo_url: storagePath })
+          }
         }
       } else {
         const created = await insertAluno(userId, payload, usuario?.schoolId || null)
@@ -572,29 +574,31 @@ export function SpectrumProvider({ children }) {
           const token = sess?.session?.access_token
           if (!token) throw new Error("not_authenticated")
 
-          const fileReader = new FileReader()
-          const fileBase64 = await new Promise((resolve, reject) => {
-            fileReader.onload = () => {
-              const base64 = fileReader.result.split(",")[1]
-              resolve(base64)
-            }
-            fileReader.onerror = reject
-            fileReader.readAsDataURL(payload.laudoFile)
-          })
-
           const storagePath = `escola-${schoolId}/user-${userId}/aluno-${created.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
-          const row = await apiFetch("/api/alunos/upload-laudo", {
-            method: "POST",
-            token,
-            body: {
-              fileBase64,
+          
+          // Upload directly to Supabase Storage (avoids Vercel 6MB limit)
+          console.log("[salvarAlunoApi] Uploading file to storage:", storagePath)
+          const { error: uploadErr, data: uploadData } = await supabase.storage
+            .from("uploads-files")
+            .upload(storagePath, payload.laudoFile, { upsert: true, contentType: "application/pdf" })
+
+          if (uploadErr) throw uploadErr
+
+          // Register file metadata in database
+          const { data: fileData, error: registerErr } = await supabase
+            .from("files")
+            .insert({
+              school_id: usuario?.schoolId || null,
+              user_id: userId,
               filename: payload.laudoFile.name,
-              schoolId: usuario?.schoolId || null,
-              alunoId: created.id,
-              storagePath,
-            },
-          })
-          await patchAluno(userId, created.id, { laudo_url: row.file.storage_path })
+              storage_path: storagePath,
+            })
+            .select()
+            .single()
+
+          if (!registerErr && fileData) {
+            await patchAluno(userId, created.id, { laudo_url: storagePath })
+          }
         }
       }
       await refresh()
