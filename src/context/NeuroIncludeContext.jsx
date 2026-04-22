@@ -13,7 +13,7 @@ import {
 } from "../services/supabaseData"
 import { sanitizeStorageSegment } from "../services/files"
 import { apiFetch } from "../services/api"
-import { apiFetch } from "../services/api"
+
 import { hash } from "bcryptjs"
 import {
   atualizarLicenca,
