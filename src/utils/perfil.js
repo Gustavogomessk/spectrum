@@ -87,7 +87,7 @@ export function canAccessAdaptar(usuario) {
   if (usuario?.tipoLicenca === "Sem Licença") return false
   // Allow trial users full access to Adaptar
   if (usuario?.trial) return true
-  const licenca = usuario?.tipoLicenca || "PRO"
+  const licenca = usuario?.tipoLicenca
   return licenca === "PRO"
 }
 
