@@ -87,7 +87,7 @@ export function canAccessAdaptar(usuario) {
   if (usuario?.tipoLicenca === "Sem Licença") return false
   // Allow trial users full access to Adaptar
   if (usuario?.trial) return true
-  const licenca = usuario?.tipoLicenca || "Basic"
+  const licenca = usuario?.tipoLicenca || "PRO"
   return licenca === "PRO"
 }
 
@@ -97,7 +97,7 @@ export function canAccessChatbot(usuario) {
   if (usuario?.tipoLicenca === "Sem Licença") return false
   // Allow trial users full access to Chatbot
   if (usuario?.trial) return true
-  const licenca = usuario?.tipoLicenca || "Basic"
+  const licenca = usuario?.tipoLicenca || "PRO"
   return licenca === "PRO"
 }
 
