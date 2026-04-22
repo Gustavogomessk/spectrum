@@ -80,6 +80,7 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
           <>
             <p className="nav-secao">Admin Instituição</p>
             <Item id="admin-instituicao" icon={<AppIcon icon={Building2} />} label="Gestão da Instituição" badge={notificacoesNaoLidas > 0 ? String(notificacoesNaoLidas) : null} />
+            <Item id="admin-usuarios" icon={<AppIcon icon={Users} />} label="Gerenciar Usuários" />
           </>
         ) : null}
       </div>

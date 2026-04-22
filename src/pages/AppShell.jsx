@@ -11,6 +11,7 @@ import ChatbotSection from "../components/sections/ChatbotSection"
 import PerfilSection from "../components/sections/PerfilSection"
 import AdminGlobalSection from "../components/sections/AdminGlobalSection"
 import AdminInstituicaoSection from "../components/sections/AdminInstituicaoSection"
+import AdminSubadminUsersSection from "../components/sections/AdminSubadminUsersSection"
 import { isAdminInstituicao, isEducador } from "../utils/perfil"
 import AppIcon from "../components/ui/AppIcon"
 import { AlertCircle, Sparkles } from "lucide-react"
@@ -26,6 +27,7 @@ const TITULOS = {
   "admin-global": "Admin Global",
   "admin-notificacoes": "Notificações",
   "admin-instituicao": "Instituição",
+  "admin-usuarios": "Gerenciar Usuários",
 }
 
 export default function AppShell() {
@@ -57,13 +59,12 @@ export default function AppShell() {
     return "var(--cor-primaria)" // Azul para info
   }
 
+  // Redirecionar SUBADMIN para gerenciar usuários por padrão
   useEffect(() => {
-    function onEsc(e) {
-      if (e.key === "Escape") setSidebarOpen(false)
+    if (isSubadmin && activeSection === "dashboard") {
+      setActiveSection("admin-usuarios")
     }
-    document.addEventListener("keydown", onEsc)
-    return () => document.removeEventListener("keydown", onEsc)
-  }, [setSidebarOpen])
+  }, [isSubadmin, activeSection, setActiveSection])
 
   function ir(secao) {
     setActiveSection(secao)
@@ -143,6 +144,7 @@ export default function AppShell() {
           <PerfilSection active={activeSection === "perfil"} />
           <AdminGlobalSection active={activeSection === "admin-global" || activeSection === "admin-notificacoes"} activeSection={activeSection} />
           <AdminInstituicaoSection active={activeSection === "admin-instituicao"} />
+          <AdminSubadminUsersSection active={activeSection === "admin-usuarios"} />
         </main>
       </div>
 

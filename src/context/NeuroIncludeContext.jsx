@@ -302,35 +302,64 @@ export function SpectrumProvider({ children }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  // Verificar se usuário está bloqueado (efeito separado para não bloquear o login)
   useEffect(() => {
     if (!usuario || !isSupabaseConfigured() || !supabase) return
     
     let ativo = true
     
-    const verificarBloqueio = async () => {
+    // Carregar dados adicionais do usuário (inclui tipoLicenca)
+    const carregarDadosUsuario = async () => {
       try {
-        const statusVerificacao = await verificarStatusUsuario(usuario.id, usuario.email)
+        const { data } = await supabase
+          .from("admin_users")
+          .select("license_type, role")
+          .eq("id", usuario.id)
+          .maybeSingle()
+        
         if (!ativo) return
         
-        if (statusVerificacao.bloqueado) {
-          // Fazer logout se o usuário estiver bloqueado
-          await supabase.auth.signOut()
-          toast(statusVerificacao.motivo || "Seu acesso foi revogado.", "erro")
-          setUsuario(null)
+        if (data) {
+          setUsuario((prev) => ({
+            ...prev,
+            tipoLicenca: data.license_type || "Basic",
+            papel: data.role || prev.papel,
+          }))
         }
       } catch (err) {
-        console.error("Erro ao verificar status do usuário:", err)
-        // Não fazer logout em caso de erro, apenas log
+        console.log("Info: Não foi possível carregar licença (tabela admin_users pode não existir)", err.message)
       }
     }
     
-    verificarBloqueio()
+    carregarDadosUsuario()
     
     return () => {
       ativo = false
     }
-  }, [usuario?.id, usuario?.email, toast])
+  }, [usuario?.id])
+
+  // Redirecionar baseado em licença
+  useEffect(() => {
+    if (!usuario) return
+    
+    // SUBADMIN: Redirecionar para gestão de usuários por padrão
+    if (usuario.perfilCodigo === PERFIL.ADMIN_INSTITUICAO && activeSection === "dashboard") {
+      setActiveSection("admin-usuarios")
+      return
+    }
+    
+    // Redirecionar educadores PRO para dashboard padrão
+    if (usuario.perfilCodigo === PERFIL.PROFESSOR && usuario.tipoLicenca === "PRO" && activeSection === "dashboard") {
+      // Manter no dashboard, pois é o padrão
+      return
+    }
+    
+    // Redirecionar educadores Basic para adaptar por padrão
+    if (usuario.perfilCodigo === PERFIL.PROFESSOR && usuario.tipoLicenca === "Basic" && activeSection === "dashboard") {
+      // Manter no dashboard por enquanto
+      return
+    }
+    
+  }, [usuario?.perfilCodigo, usuario?.tipoLicenca, activeSection])
 
   const loginDemo = useCallback(
     (email, senha, role) => {

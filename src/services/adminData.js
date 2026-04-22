@@ -408,14 +408,37 @@ export async function deletarUsuario(usuarioId) {
 
 export async function editarUsuario(usuarioId, dados) {
   if (!supabase) return
-  const update = {
-    full_name: dados.nome,
-    email: dados.email,
-    role: dados.papel,
-    license_type: dados.tipoLicenca,
+  const update = {}
+  
+  // Adicionar apenas os campos que foram fornecidos
+  if (dados.nome !== undefined) update.full_name = dados.nome
+  if (dados.email !== undefined) update.email = dados.email
+  if (dados.papel !== undefined) update.role = dados.papel
+  if (dados.tipoLicenca !== undefined) update.license_type = dados.tipoLicenca
+  if (dados.funcao !== undefined) update.funcao = dados.funcao
+  if (dados.senha !== undefined && dados.senha) {
+    // Para atualizar senha via API
+    try {
+      const response = await fetch("/api/users/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: usuarioId, novaSenha: dados.senha }),
+      })
+      if (!response.ok) {
+        const errData = await response.json()
+        throw new Error(errData.message || "Erro ao atualizar senha")
+      }
+    } catch (err) {
+      console.error("Erro ao atualizar senha:", err)
+      throw err
+    }
   }
-  const { error } = await supabase.from("admin_users").update(update).eq("id", usuarioId)
-  if (error) throw error
+  
+  // Atualizar os outros campos no banco
+  if (Object.keys(update).length > 0) {
+    const { error } = await supabase.from("admin_users").update(update).eq("id", usuarioId)
+    if (error) throw error
+  }
 }
 
 export async function editarInstituicao(instituicaoId, dados) {

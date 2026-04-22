@@ -59,7 +59,7 @@ export default function AdminInstituicaoSection({ active }) {
   return (
     <section className={`secao ${active ? "ativa" : ""}`} id="secao-admin-instituicao" aria-label="Painel da instituição">
       <div className="secao-corpo">
-        <div className="card mb-3">
+       {/*  <div className="card mb-3">
           <div className="card-cabecalho">
             <span className="card-titulo">Criar usuário da instituição</span>
           </div>
@@ -105,7 +105,7 @@ export default function AdminInstituicaoSection({ active }) {
               Criar usuário
             </button>
           </div>
-        </div>
+        </div> */}
 
         <div className="card mb-3">
           <div className="card-cabecalho">
