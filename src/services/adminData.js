@@ -383,9 +383,19 @@ export async function deletarUsuario(usuarioId) {
       throw new Error(`Erro ao deletar usuário (RLS bloqueou): ${dbError.message}`)
     }
     
-    if (!deletedData || deletedData.length === 0) {
-      console.error(`[DELETE] RLS silenciosamente bloqueou o DELETE - nenhum registro foi removido`)
-      throw new Error(`Política RLS bloqueou a deleção. Verifique as políticas no Supabase.`)
+    // PASSO 3: VERIFICAR SE FOI REALMENTE DELETADO (importante!)
+    console.log(`[DELETE] Verificando se foi realmente deletado...`)
+    const { data: verificacao, error: verifyError } = await supabase
+      .from("admin_users")
+      .select("id, email")
+      .eq("id", usuarioId)
+      .maybeSingle()
+    
+    console.log(`[DELETE] Verificação pós-delete:`, { encontrado: verificacao ? 'SIM ❌' : 'NÃO ✅', verificacao, verifyError })
+    
+    if (verificacao) {
+      console.error(`[DELETE] ❌ RLS BLOQUEOU SILENCIOSAMENTE - Registro ainda existe no banco!`)
+      throw new Error(`Política RLS bloqueou a deleção. O registro ainda existe no banco de dados. Você precisa executar o SQL de correção de RLS no Supabase.`)
     }
     
     console.log(`✓ Usuário ${usuarioId} deletado com sucesso de admin_users`, deletedData)
