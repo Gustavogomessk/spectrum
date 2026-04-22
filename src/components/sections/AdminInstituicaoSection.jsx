@@ -187,7 +187,7 @@ export default function AdminInstituicaoSection({ active }) {
                 </div>
                 <div style={{ marginBottom: "1rem", paddingTop: "0.75rem", borderTop: "2px solid var(--cor-borda)" }}>
                   <strong style={{ fontSize: "1.1rem" }}>
-                    Valor Total: {formatarMoeda(calcularValorBoleto(tipoInstituicaoAtual, usuarios))}
+                    Valor Total: {formatarMoeda(calcularValorBoleto(instituicao?.plano, usuarios))}
                   </strong>
                 </div>
               </div>
