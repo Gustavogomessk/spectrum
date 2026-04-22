@@ -19,6 +19,11 @@ function sanitizeStorageSegment(seg) {
     .replace(/^-|-$/g, "")
 }
 
+function isValidUUID(uuid) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(uuid)
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "method_not_allowed" })
@@ -64,11 +69,14 @@ export default async function handler(req, res) {
       return
     }
 
+    // Validate school_id: only use if it's a valid UUID, otherwise pass null
+    const validSchoolId = schoolId && isValidUUID(schoolId) ? schoolId : null
+
     // Insert file metadata using admin client (bypasses RLS)
     const { data: row, error: dbErr } = await supabaseAdmin
       .from("files")
       .insert({
-        school_id: schoolId || null,
+        school_id: validSchoolId,
         user_id: user.id,
         filename: filename,
         storage_path: storagePath,
