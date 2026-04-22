@@ -268,18 +268,8 @@ export function SpectrumProvider({ children }) {
         iniciais: iniciaisDe(meta.nome || s.user.email || "NI"),
       })
     })
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (!session?.user) {
-        setUsuario(null)
-        return
-      }
-      
-      // Verificar se o usuário ou sua instituição estão bloqueados
-      const statusVerificacao = await verificarStatusUsuario(session.user.id, session.user.email)
-      if (statusVerificacao.bloqueado) {
-        // Fazer logout se o usuário estiver bloqueado
-        await supabase.auth.signOut()
-        toast(statusVerificacao.motivo || "Seu acesso foi revogado.", "erro")
         setUsuario(null)
         return
       }
@@ -296,7 +286,37 @@ export function SpectrumProvider({ children }) {
       })
     })
     return () => sub.subscription.unsubscribe()
-  }, [toast])
+  }, [])
+
+  // Verificar se usuário está bloqueado (efeito separado para não bloquear o login)
+  useEffect(() => {
+    if (!usuario || !isSupabaseConfigured() || !supabase) return
+    
+    let ativo = true
+    
+    const verificarBloqueio = async () => {
+      try {
+        const statusVerificacao = await verificarStatusUsuario(usuario.id, usuario.email)
+        if (!ativo) return
+        
+        if (statusVerificacao.bloqueado) {
+          // Fazer logout se o usuário estiver bloqueado
+          await supabase.auth.signOut()
+          toast(statusVerificacao.motivo || "Seu acesso foi revogado.", "erro")
+          setUsuario(null)
+        }
+      } catch (err) {
+        console.error("Erro ao verificar status do usuário:", err)
+        // Não fazer logout em caso de erro, apenas log
+      }
+    }
+    
+    verificarBloqueio()
+    
+    return () => {
+      ativo = false
+    }
+  }, [usuario?.id, usuario?.email, toast])
 
   const loginDemo = useCallback(
     (email, senha, role) => {
@@ -795,6 +815,3 @@ export function useSpectrum() {
   if (!ctx) throw new Error("useSpectrum fora do provider")
   return ctx
 }
-
-// Compatibilidade temporária para imports antigos.
-export const useNeuroInclude = useSpectrum

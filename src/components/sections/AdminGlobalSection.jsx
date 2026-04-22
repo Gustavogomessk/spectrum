@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react"
 import { useSpectrum } from "../../context/SpectrumContext"
-import { AlertCircle, BarChart3, Users, CreditCard, Mail, Building2, QrCode, Trash2 } from "lucide-react"
+import { AlertCircle, BarChart3, Users, CreditCard, Mail, Building2, QrCode, Trash2, Info, CheckCircle } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import JsBarcode from "jsbarcode"
 import AppIcon from "../ui/AppIcon"
@@ -29,6 +29,33 @@ export default function AdminGlobalSection({ active, activeSection }) {
     atualizarTokensCohere,
     toast,
   } = useSpectrum()
+
+  // Helpers para ícones e cores de notificação
+  const getIconForNotificationType = (tipo) => {
+    switch (tipo) {
+      case "alerta":
+        return AlertCircle
+      case "info":
+        return Info
+      case "sucesso":
+        return CheckCircle
+      default:
+        return AlertCircle
+    }
+  }
+
+  const getColorForNotificationType = (tipo) => {
+    switch (tipo) {
+      case "alerta":
+        return "#ff6b6b"
+      case "info":
+        return "#4dabf7"
+      case "sucesso":
+        return "#51cf66"
+      default:
+        return "#4dabf7"
+    }
+  }
 
   const [activeTab, setActiveTab] = useState("dashboard")
   const [inst, setInst] = useState({ nome: "", cnpj: "", plano: "Enterprise", limiteUsuarios: "" })
@@ -601,18 +628,22 @@ export default function AdminGlobalSection({ active, activeSection }) {
                   <span className="card-titulo">Notificações enviadas</span>
                 </div>
                 <div className="card-corpo">
-                  {notificacoes.slice(0, 10).map((n) => (
-                    <div key={n.id} style={{ padding: "1rem", borderBottom: "1px solid var(--cor-borda)", display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
-                      <AppIcon icon={AlertCircle} size={20} style={{ color: "var(--cor-primaria)", flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: "600", color: "var(--cor-texto-principal)" }}>{n.titulo}</div>
-                        <div style={{ fontSize: "0.85rem", color: "var(--cor-texto-secundario)", marginTop: "0.25rem" }}>{n.conteudo}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--cor-texto-mudo)", marginTop: "0.5rem" }}>
-                          {new Date(n.dataCriacao).toLocaleDateString("pt-BR")}
+                  {notificacoes.slice(0, 10).map((n) => {
+                    const IconComponent = getIconForNotificationType(n.tipo)
+                    const color = getColorForNotificationType(n.tipo)
+                    return (
+                      <div key={n.id} style={{ padding: "1rem", borderBottom: "1px solid var(--cor-borda)", display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                        <AppIcon icon={IconComponent} size={20} style={{ color, flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: "600", color: "var(--cor-texto-principal)" }}>{n.titulo}</div>
+                          <div style={{ fontSize: "0.85rem", color: "var(--cor-texto-secundario)", marginTop: "0.25rem" }}>{n.conteudo}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--cor-texto-mudo)", marginTop: "0.5rem" }}>
+                            {new Date(n.dataCriacao).toLocaleDateString("pt-BR")}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
