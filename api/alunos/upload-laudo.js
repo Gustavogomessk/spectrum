@@ -24,6 +24,74 @@ function isValidUUID(uuid) {
   return uuidRegex.test(uuid)
 }
 
+async function parseMultipartForm(req) {
+  const contentType = req.headers["content-type"] || ""
+  
+  // If JSON, parse as JSON
+  if (contentType.includes("application/json")) {
+    return JSON.parse(req.body || "{}")
+  }
+  
+  // If FormData/multipart, parse manually
+  if (contentType.includes("multipart/form-data")) {
+    const boundary = contentType.split("boundary=")[1]
+    if (!boundary) throw new Error("Invalid multipart boundary")
+    
+    const body = typeof req.body === "string" ? req.body : req.body.toString("utf-8")
+    const parts = body.split(`--${boundary}`)
+    const formData = {}
+    
+    for (const part of parts) {
+      if (!part.includes("Content-Disposition")) continue
+      
+      const lines = part.split("\r\n")
+      let fieldName = ""
+      let filename = ""
+      let content = ""
+      let isFile = false
+      let startContent = false
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        
+        if (line.includes("Content-Disposition")) {
+          const nameMatch = line.match(/name="([^"]+)"/)
+          const fileMatch = line.match(/filename="([^"]+)"/)
+          if (nameMatch) fieldName = nameMatch[1]
+          if (fileMatch) {
+            filename = fileMatch[1]
+            isFile = true
+          }
+        } else if (line === "" && !startContent) {
+          startContent = true
+          // Content starts from next line
+          content = lines.slice(i + 1).join("\r\n")
+          // Remove trailing CRLF
+          if (content.endsWith("\r\n")) {
+            content = content.slice(0, -2)
+          }
+          break
+        }
+      }
+      
+      if (fieldName) {
+        if (isFile) {
+          formData[fieldName] = {
+            filename,
+            content: Buffer.from(content, "binary")
+          }
+        } else {
+          formData[fieldName] = content
+        }
+      }
+    }
+    
+    return formData
+  }
+  
+  throw new Error("Unsupported content-type")
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "method_not_allowed" })
@@ -33,32 +101,71 @@ export default async function handler(req, res) {
   const user = await requireUser(req, res)
   if (!user) return
 
-  const { fileBase64, filename, schoolId, alunoId, storagePath: storagePathOpt } = req.body || {}
-
-  if (!fileBase64) {
-    res.status(400).json({ error: "missing_fileBase64" })
-    return
-  }
-
-  if (!filename?.toLowerCase().endsWith(".pdf")) {
-    res.status(400).json({ error: "only_pdf_allowed" })
-    return
-  }
-
   try {
-    // Convert base64 to buffer
-    const buffer = Buffer.from(fileBase64, "base64")
+    let fileBuffer, filename, schoolId, alunoId, storagePath
+
+    const contentType = req.headers["content-type"] || ""
+    
+    if (contentType.includes("application/json")) {
+      // JSON body with base64
+      const { fileBase64, filename: fname, schoolId: sid, alunoId: aid, storagePath: sp } = req.body || {}
+      
+      if (!fileBase64) {
+        res.status(400).json({ error: "missing_file" })
+        return
+      }
+      
+      if (!fname?.toLowerCase().endsWith(".pdf")) {
+        res.status(400).json({ error: "only_pdf_allowed" })
+        return
+      }
+      
+      fileBuffer = Buffer.from(fileBase64, "base64")
+      filename = fname
+      schoolId = sid
+      alunoId = aid
+      storagePath = sp
+    } else if (contentType.includes("multipart/form-data")) {
+      // FormData with file
+      const formData = await parseMultipartForm(req)
+      const fileField = formData.file
+      
+      if (!fileField?.content) {
+        res.status(400).json({ error: "missing_file" })
+        return
+      }
+      
+      const fname = fileField.filename || formData.filename || "arquivo.pdf"
+      if (!fname.toLowerCase().endsWith(".pdf")) {
+        res.status(400).json({ error: "only_pdf_allowed" })
+        return
+      }
+      
+      fileBuffer = fileField.content
+      filename = fname
+      schoolId = formData.schoolId
+      alunoId = formData.alunoId
+      storagePath = formData.storagePath
+    } else {
+      res.status(400).json({ error: "unsupported_content_type" })
+      return
+    }
+
+    if (!fileBuffer || fileBuffer.length === 0) {
+      res.status(400).json({ error: "file_empty" })
+      return
+    }
 
     // Build storage path
     const schoolIdSafe = sanitizeStorageSegment(schoolId || "trial")
-    const storagePath =
-      storagePathOpt ||
+    const finalStoragePath =
+      storagePath ||
       `escola-${schoolIdSafe}/user-${user.id}/aluno-${alunoId || "general"}-${sanitizeFilename(filename)}`
 
     // Upload to storage using admin client (bypasses RLS)
     const { error: upErr, data: upData } = await supabaseAdmin.storage
       .from(BUCKET)
-      .upload(storagePath, buffer, {
+      .upload(finalStoragePath, fileBuffer, {
         upsert: true,
         contentType: "application/pdf",
       })
@@ -79,7 +186,7 @@ export default async function handler(req, res) {
         school_id: validSchoolId,
         user_id: user.id,
         filename: filename,
-        storage_path: storagePath,
+        storage_path: finalStoragePath,
         public_url: null,
       })
       .select("id, filename, storage_path, created_at")
