@@ -260,6 +260,7 @@ export async function insertAluno(userId, aluno, schoolId = null) {
 
   // Only save schoolId if it's a valid UUID
   const validSchoolId = isValidUUID(schoolId) ? schoolId : null
+  console.log("[insertAluno] schoolId input:", schoolId, "→ validSchoolId:", validSchoolId)
 
   const { data, error } = await supabase
     .from("alunos")

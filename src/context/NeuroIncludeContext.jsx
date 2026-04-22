@@ -533,6 +533,7 @@ export function SpectrumProvider({ children }) {
   const salvarAlunoApi = useCallback(
     async (payload) => {
       const schoolId = usuario?.schoolId || "trial"
+      console.log("[salvarAlunoApi] usuario.schoolId:", usuario?.schoolId, "→ passing:", schoolId)
       if (payload.id) {
         await updateAluno(userId, { ...payload, id: payload.id }, usuario?.schoolId || null)
         if (payload.laudoFile) {
