@@ -511,7 +511,7 @@ export function SpectrumProvider({ children }) {
     async (payload) => {
       const schoolId = usuario?.schoolId || "trial"
       if (payload.id) {
-        await updateAluno(userId, { ...payload, id: payload.id })
+        await updateAluno(userId, { ...payload, id: payload.id }, usuario?.schoolId || null)
         if (payload.laudoFile) {
           const { data: sess } = await supabase.auth.getSession()
           const token = sess?.session?.access_token
@@ -542,7 +542,7 @@ export function SpectrumProvider({ children }) {
           await patchAluno(userId, payload.id, { laudo_url: row.file.storage_path })
         }
       } else {
-        const created = await insertAluno(userId, payload)
+        const created = await insertAluno(userId, payload, usuario?.schoolId || null)
         if (payload.laudoFile && created?.id) {
           const { data: sess } = await supabase.auth.getSession()
           const token = sess?.session?.access_token

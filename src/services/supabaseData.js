@@ -69,24 +69,12 @@ export async function fetchAlunos(userId, schoolId = null) {
     return DEMO_ALUNOS
   }
 
-  let query
-  if (schoolId) {
-    // Fetch alunos created by user OR alunos from their school
-    query = supabase
-      .from("alunos")
-      .select("*")
-      .or(`user_id.eq.${userId},school_id.eq.${schoolId}`)
-      .order("created_at", { ascending: false })
-  } else {
-    // No school: just fetch user's own alunos
-    query = supabase
-      .from("alunos")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-  }
-
-  const { data, error } = await query
+  // Fetch all alunos accessible by RLS policy
+  // The policy allows: (user owns it) OR (user is member of school)
+  const { data, error } = await supabase
+    .from("alunos")
+    .select("*")
+    .order("created_at", { ascending: false })
 
   if (error) throw error
   return (data || []).map((row) => ({
@@ -110,77 +98,45 @@ export async function fetchMateriais(userId, schoolId = null) {
     return DEMO_MATERIAIS
   }
 
-  // Build query: fetch materials created by user OR materials from their school
-  let query = supabase.from("materiais").select("*").order("created_at", { ascending: false })
+  // Fetch all materials accessible by RLS policy
+  // The policy allows: (user owns it) OR (user is member of school)
+  const { data: mats, error: errMats } = await supabase
+    .from("materiais")
+    .select("*")
+    .order("created_at", { ascending: false })
 
-  // The RLS policy should handle filtering, but we can also filter explicitly
-  // to ensure we get school materials
-  if (schoolId) {
-    // Fetch materials owned by user OR belonging to the school
-    const { data: mats, error: errMats } = await supabase
-      .from("materiais")
-      .select("*")
-      .or(`user_id.eq.${userId},school_id.eq.${schoolId}`)
-      .order("created_at", { ascending: false })
+  if (errMats) throw errMats
 
-    if (errMats) throw errMats
+  // Also fetch alunos for display names
+  const { data: aluRows, error: errAlu } = await supabase
+    .from("alunos")
+    .select("id, nome, diagnostico")
+    .order("created_at", { ascending: false })
 
-    const { data: aluRows, error: errAlu } = await supabase.from("alunos").select("id, nome, diagnostico")
-    if (errAlu) throw errAlu
+  if (errAlu) throw errAlu
 
-    const porId = new Map((aluRows || []).map((a) => [a.id, a]))
+  const porId = new Map((aluRows || []).map((a) => [a.id, a]))
 
-    return (mats || []).map((row) => {
-      const alunoRow = row.aluno_id ? porId.get(row.aluno_id) : null
-      return {
-        id: row.id,
-        nome: row.nome,
-        aluno: alunoRow?.nome || "—",
-        perfil: row.perfil || alunoRow?.diagnostico || "—",
-        data: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—",
-        conteudo_html: row.conteudo_html,
-        pdf_original_nome: row.pdf_original_nome || "",
-        pdf_adaptado_nome: row.pdf_adaptado_nome || "",
-        pdf_original_path: row.pdf_original_path || null,
-        pdf_adaptado_path: row.pdf_adaptado_path || null,
-      }
-    })
-  } else {
-    // No school: just fetch user's own materials
-    const { data: mats, error: errMats } = await supabase
-      .from("materiais")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-
-    if (errMats) throw errMats
-
-    const { data: aluRows, error: errAlu } = await supabase.from("alunos").select("id, nome, diagnostico")
-    if (errAlu) throw errAlu
-
-    const porId = new Map((aluRows || []).map((a) => [a.id, a]))
-
-    return (mats || []).map((row) => {
-      const alunoRow = row.aluno_id ? porId.get(row.aluno_id) : null
-      return {
-        id: row.id,
-        nome: row.nome,
-        aluno: alunoRow?.nome || "—",
-        perfil: row.perfil || alunoRow?.diagnostico || "—",
-        data: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—",
-        conteudo_html: row.conteudo_html,
-        pdf_original_nome: row.pdf_original_nome || "",
-        pdf_adaptado_nome: row.pdf_adaptado_nome || "",
-        pdf_original_path: row.pdf_original_path || null,
-        pdf_adaptado_path: row.pdf_adaptado_path || null,
-      }
-    })
-  }
+  return (mats || []).map((row) => {
+    const alunoRow = row.aluno_id ? porId.get(row.aluno_id) : null
+    return {
+      id: row.id,
+      nome: row.nome,
+      aluno: alunoRow?.nome || "—",
+      perfil: row.perfil || alunoRow?.diagnostico || "—",
+      data: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—",
+      conteudo_html: row.conteudo_html,
+      pdf_original_nome: row.pdf_original_nome || "",
+      pdf_adaptado_nome: row.pdf_adaptado_nome || "",
+      pdf_original_path: row.pdf_original_path || null,
+      pdf_adaptado_path: row.pdf_adaptado_path || null,
+    }
+  })
 }
 
-export async function updateAluno(userId, aluno) {
+export async function updateAluno(userId, aluno, schoolId = null) {
   if (!isSupabaseConfigured() || !supabase) {
-    const list = await fetchAlunos(userId)
+    const list = await fetchAlunos(userId, schoolId)
     const next = list.map((a) =>
       String(a.id) === String(aluno.id)
         ? {
@@ -198,16 +154,23 @@ export async function updateAluno(userId, aluno) {
     return next.find((a) => String(a.id) === String(aluno.id))
   }
 
+  const updateData = {
+    matricula: aluno.matricula || null,
+    nome: aluno.nome,
+    nascimento: aluno.nascimento || null,
+    diagnostico: aluno.diagnostico,
+    observacoes: aluno.obs || null,
+    laudo_url: aluno.laudo_url || null,
+  }
+
+  // If schoolId is provided and not already set, add it to update
+  if (schoolId) {
+    updateData.school_id = schoolId
+  }
+
   const { data, error } = await supabase
     .from("alunos")
-    .update({
-      matricula: aluno.matricula || null,
-      nome: aluno.nome,
-      nascimento: aluno.nascimento || null,
-      diagnostico: aluno.diagnostico,
-      observacoes: aluno.obs || null,
-      laudo_url: aluno.laudo_url || null,
-    })
+    .update(updateData)
     .eq("id", aluno.id)
     .select()
     .single()
@@ -271,9 +234,9 @@ export async function patchAluno(userId, alunoId, fields) {
   }
 }
 
-export async function insertAluno(userId, aluno) {
+export async function insertAluno(userId, aluno, schoolId = null) {
   if (!isSupabaseConfigured() || !supabase) {
-    const list = await fetchAlunos(userId)
+    const list = await fetchAlunos(userId, schoolId)
     const novo = {
       id: String(Date.now()),
       matricula: aluno.matricula || "",
@@ -293,6 +256,7 @@ export async function insertAluno(userId, aluno) {
     .from("alunos")
     .insert({
       user_id: userId,
+      school_id: schoolId || null,
       matricula: aluno.matricula || null,
       nome: aluno.nome,
       nascimento: aluno.nascimento || null,

@@ -10,7 +10,7 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
   const adminMaster = isAdminMaster(usuario)
   const adminInstituicao = isAdminInstituicao(usuario)
   const notificacoesNaoLidas = (notificacoesSubadmin || []).filter((n) => !n.lida).length
-  const licenca = usuario?.tipoLicenca || "Basic"
+  const licenca = usuario?.tipoLicenca 
 
   function Item({ id, icon, label, badge, disabled = false }) {
     const ativo = activeSection === id
