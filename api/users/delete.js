@@ -21,15 +21,27 @@ export default async function handler(req, res) {
     
     // Delete user from auth (this will cascade delete related data due to ON DELETE CASCADE)
     console.log('[DELETE USER] calling supabaseAdmin.auth.admin.deleteUser with service role')
-    let deleteResult
-    try {
-      deleteResult = await supabaseAdmin.auth.admin.deleteUser(userId)
-    } catch (err) {
-      console.error(`[DELETE USER] Exception when calling deleteUser for ${userId}:`, err)
-      return res.status(500).json({ error: 'exception_deleted_user', message: err?.message || String(err), stack: err?.stack })
+    let deleteResult = null
+    let lastError = null
+
+    const tryDelete = async (arg) => {
+      try {
+        console.log('[DELETE USER] trying deleteUser with arg:', arg)
+        return await supabaseAdmin.auth.admin.deleteUser(arg)
+      } catch (err) {
+        console.warn('[DELETE USER] deleteUser threw for arg:', arg, err?.message || err)
+        lastError = err
+        return null
+      }
     }
 
-    console.log('[DELETE USER] deleteResult:', deleteResult)
+    // Try multiple possible signatures (first the common one)
+    deleteResult = await tryDelete(userId)
+    if (!deleteResult) deleteResult = await tryDelete({ userId })
+    if (!deleteResult) deleteResult = await tryDelete({ user_id: userId })
+    if (!deleteResult) deleteResult = await tryDelete({ id: userId })
+
+    console.log('[DELETE USER] deleteResult (final):', deleteResult, 'lastError:', lastError)
 
     const { error } = deleteResult || {}
     if (error) {
@@ -39,6 +51,10 @@ export default async function handler(req, res) {
         details: error.status || error.code,
         raw: error
       })
+    }
+    if (!deleteResult && lastError) {
+      console.error(`[DELETE USER] deleteUser failed for all tried signatures. lastError:`, lastError)
+      return res.status(500).json({ error: 'delete_user_failed', message: lastError?.message || String(lastError), stack: lastError?.stack })
     }
 
     console.log(`[DELETE USER] ✓ Usuário ${userId} deletado com sucesso de auth.users`)
