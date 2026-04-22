@@ -86,7 +86,11 @@ export default async function handler(req, res) {
     console.log(`[upload-laudo] Inserting DB record: schoolId=${validSchoolId}, userId=${user.id}`)
 
     // Insert file metadata using admin client (bypasses RLS)
-    const { data: row, error: dbErr } = await supabaseAdmin
+    // First try direct insert
+    let row = null
+    let dbErr = null
+    
+    const { data: insertData, error: insertError } = await supabaseAdmin
       .from("files")
       .insert({
         school_id: validSchoolId,
@@ -98,9 +102,39 @@ export default async function handler(req, res) {
       .select("id, filename, storage_path, created_at")
       .single()
 
-    if (dbErr) {
-      console.error("[upload-laudo] DB insert error:", dbErr)
-      return res.status(500).json({ error: "db_insert_failed", details: dbErr.message })
+    if (insertError) {
+      console.error("[upload-laudo] Initial insert failed:", insertError)
+      dbErr = insertError
+      
+      // If insert failed, try with school_id explicitly null
+      if (insertError.message?.includes("school") || insertError.message?.includes("foreign")) {
+        console.log("[upload-laudo] Retrying with school_id = null")
+        const { data: retryData, error: retryError } = await supabaseAdmin
+          .from("files")
+          .insert({
+            school_id: null,
+            user_id: user.id,
+            filename: filename,
+            storage_path: storagePath,
+            public_url: null,
+          })
+          .select("id, filename, storage_path, created_at")
+          .single()
+        
+        if (retryError) {
+          console.error("[upload-laudo] Retry also failed:", retryError)
+          return res.status(500).json({ error: "db_insert_failed", details: retryError.message, code: retryError.code })
+        }
+        row = retryData
+      } else {
+        return res.status(500).json({ error: "db_insert_failed", details: insertError.message, code: insertError.code })
+      }
+    } else {
+      row = insertData
+    }
+
+    if (!row) {
+      return res.status(500).json({ error: "db_insert_failed", details: "No row returned" })
     }
 
     console.log(`[upload-laudo] Success: file_id=${row.id}`)
