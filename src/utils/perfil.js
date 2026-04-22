@@ -65,3 +65,99 @@ export function funcaoMetadataDePapelCadastro(papel) {
   if (p.includes("psicoped")) return PERFIL.PSICO
   return PERFIL.PROFESSOR
 }
+
+/**
+ * Validações de acesso por licença
+ * Plano Secretaria: apenas Alunos (cadastro e laudos)
+ * Plano Basic: Dashboard, Alunos, Histórico
+ * Plano PRO: Todos os acessos (Dashboard, Adaptar, Histórico, Alunos, Chatbot)
+ */
+
+export function canAccessDashboard(usuario) {
+  // Dashboard: PRO, Basic e Educadores
+  if (isAdmin(usuario)) return true
+  if (isSecretaria(usuario)) return false
+  return true
+}
+
+export function canAccessAdaptar(usuario) {
+  // Adaptar Material: apenas PRO
+  if (isSecretaria(usuario)) return false
+  const licenca = usuario?.tipoLicenca || "Basic"
+  return licenca === "PRO"
+}
+
+export function canAccessChatbot(usuario) {
+  // Chatbot: apenas PRO
+  if (isSecretaria(usuario)) return false
+  const licenca = usuario?.tipoLicenca || "Basic"
+  return licenca === "PRO"
+}
+
+export function canAccessHistorico(usuario) {
+  // Histórico: PRO e Basic
+  if (isSecretaria(usuario)) return false
+  return true
+}
+
+export function canAccessAlunos(usuario) {
+  // Alunos: todos (Secretaria, Basic, PRO) mais educadores
+  return true
+}
+
+export function canAccessSection(usuario, sectionId) {
+  // Admin e suas seções
+  if (isAdminMaster(usuario) || isAdminInstituicao(usuario)) {
+    const adminSections = new Set(["dashboard", "admin-global", "admin-notificacoes", "admin-instituicao", "admin-usuarios", "perfil"])
+    return adminSections.has(sectionId)
+  }
+
+  // Seções por tipo de usuário
+  switch (sectionId) {
+    case "dashboard":
+      return canAccessDashboard(usuario)
+    case "adaptar":
+      return canAccessAdaptar(usuario)
+    case "chatbot":
+      return canAccessChatbot(usuario)
+    case "historico":
+      return canAccessHistorico(usuario)
+    case "alunos":
+      return canAccessAlunos(usuario)
+    case "perfil":
+      return true
+    default:
+      return false
+  }
+}
+
+export function getAccessibleSections(usuario) {
+  const sections = ["perfil"]
+  
+  if (isAdmin(usuario)) {
+    sections.push("admin-instituicao", "admin-usuarios")
+    if (isAdminMaster(usuario)) {
+      sections.push("admin-global", "admin-notificacoes")
+    }
+  } else {
+    if (canAccessDashboard(usuario)) sections.push("dashboard")
+    if (canAccessAdaptar(usuario)) sections.push("adaptar")
+    if (canAccessHistorico(usuario)) sections.push("historico")
+    if (canAccessAlunos(usuario)) sections.push("alunos")
+    if (canAccessChatbot(usuario)) sections.push("chatbot")
+  }
+
+  return sections
+}
+
+export function getDefaultSection(usuario) {
+  if (isAdminInstituicao(usuario)) return "admin-usuarios"
+  if (isAdminMaster(usuario)) return "admin-global"
+  if (isSecretaria(usuario)) return "alunos"
+  
+  const licenca = usuario?.tipoLicenca || "Basic"
+  if (licenca === "PRO") return "dashboard"
+  if (licenca === "Basic") return "dashboard"
+  
+  return "dashboard"
+}

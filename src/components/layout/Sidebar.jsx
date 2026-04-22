@@ -1,7 +1,7 @@
 import { useSpectrum } from "../../context/SpectrumContext"
-import { isAdminInstituicao, isAdminMaster, isEducador, isSecretaria } from "../../utils/perfil"
+import { isAdminInstituicao, isAdminMaster, isEducador, isSecretaria, canAccessSection } from "../../utils/perfil"
 import AppIcon from "../ui/AppIcon"
-import { Bell, Bot, Building2, FileText, Gauge, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users } from "lucide-react"
+import { Bell, Bot, Building2, FileText, Gauge, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, Lock } from "lucide-react"
 
 export default function Sidebar({ aberta, onNavigate, onPerfil }) {
   const { usuario, activeSection, notificacoesSubadmin } = useSpectrum()
@@ -10,21 +10,31 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
   const adminMaster = isAdminMaster(usuario)
   const adminInstituicao = isAdminInstituicao(usuario)
   const notificacoesNaoLidas = (notificacoesSubadmin || []).filter((n) => !n.lida).length
+  const licenca = usuario?.tipoLicenca || "Basic"
 
-  function Item({ id, icon, label, badge }) {
+  function Item({ id, icon, label, badge, disabled = false }) {
     const ativo = activeSection === id
+    const podeAcessar = canAccessSection(usuario, id)
+    
     return (
       <button
         type="button"
-        className={`nav-item ${ativo ? "ativo" : ""}`}
+        className={`nav-item ${ativo ? "ativo" : ""} ${!podeAcessar ? "desabilitado" : ""}`}
         aria-current={ativo ? "page" : undefined}
-        onClick={() => onNavigate(id)}
+        onClick={() => podeAcessar && onNavigate(id)}
         aria-label={label}
+        disabled={!podeAcessar}
+        title={!podeAcessar ? `Disponível no plano ${id === "adaptar" ? "PRO" : id === "chatbot" ? "PRO" : ""}` : ""}
       >
         <span className="nav-icon" aria-hidden="true">
           {icon}
         </span>{" "}
         {label}
+        {!podeAcessar && (
+          <span className="nav-icon-bloqueado" aria-hidden="true" style={{ marginLeft: "auto" }}>
+            <AppIcon icon={Lock} size={12} />
+          </span>
+        )}
         {badge ? (
           <span className="nav-badge" aria-label="Novo">
             {badge}
@@ -49,7 +59,7 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
             <Item id="dashboard" icon={<AppIcon icon={LayoutDashboard} />} label="Dashboard" />
 
             <p className="nav-secao">Adaptação</p>
-            <Item id="adaptar" icon={<AppIcon icon={Gauge} />} label="Adaptar Material" badge="Novo" />
+            <Item id="adaptar" icon={<AppIcon icon={Gauge} />} label="Adaptar Material" badge={licenca === "PRO" ? "Novo" : null} />
             <Item id="historico" icon={<AppIcon icon={FileText} />} label="Materiais" />
 
             <p className="nav-secao">Gestão</p>
@@ -101,7 +111,9 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
           </div>
           <div className="perfil-info">
             <div className="perfil-nome">{usuario?.nome || "—"}</div>
-            <div className="perfil-papel">{usuario?.papel || "—"}</div>
+            <div className="perfil-papel">
+              {usuario?.papel || "—"} {licenca && <span style={{ fontSize: "0.75rem", color: "var(--cor-primaria)", marginLeft: "0.25rem" }}>({licenca})</span>}
+            </div>
           </div>
           <span aria-hidden="true" style={{ fontSize: "0.9rem", color: "var(--cor-texto-mudo)" }}>
             <AppIcon icon={Settings} size={18} />

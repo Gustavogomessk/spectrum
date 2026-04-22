@@ -12,7 +12,7 @@ import PerfilSection from "../components/sections/PerfilSection"
 import AdminGlobalSection from "../components/sections/AdminGlobalSection"
 import AdminInstituicaoSection from "../components/sections/AdminInstituicaoSection"
 import AdminSubadminUsersSection from "../components/sections/AdminSubadminUsersSection"
-import { isAdminInstituicao, isEducador } from "../utils/perfil"
+import { isAdminInstituicao, isEducador, canAccessSection, getDefaultSection, isSecretaria } from "../utils/perfil"
 import AppIcon from "../components/ui/AppIcon"
 import { AlertCircle, Sparkles } from "lucide-react"
 import PlanosPopup from "../components/modals/PlanosPopup"
@@ -65,6 +65,17 @@ export default function AppShell() {
       setActiveSection("admin-usuarios")
     }
   }, [isSubadmin, activeSection, setActiveSection])
+
+  // Validar acesso à seção atual baseado na licença do usuário
+  useEffect(() => {
+    if (!usuario) return
+
+    // Se a seção atual não é acessível, redirecionar para a seção padrão
+    if (!canAccessSection(usuario, activeSection)) {
+      const defaultSection = getDefaultSection(usuario)
+      setActiveSection(defaultSection)
+    }
+  }, [usuario, activeSection, setActiveSection])
 
   function ir(secao) {
     setActiveSection(secao)
