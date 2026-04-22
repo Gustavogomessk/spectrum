@@ -97,7 +97,7 @@ export function canAccessChatbot(usuario) {
   if (usuario?.tipoLicenca === "Sem Licença") return false
   // Allow trial users full access to Chatbot
   if (usuario?.trial) return true
-  const licenca = usuario?.tipoLicenca || "PRO"
+  const licenca = usuario?.tipoLicenca
   return licenca === "PRO"
 }
 
@@ -173,7 +173,7 @@ export function getDefaultSection(usuario) {
   if (isAdminMaster(usuario)) return "admin-global"
   if (isSecretaria(usuario)) return "alunos"
   
-  const licenca = usuario?.tipoLicenca || "Basic"
+  const licenca = usuario?.tipoLicenca
   if (licenca === "Sem Licença") return "perfil"
   if (licenca === "PRO") return "dashboard"
   if (licenca === "Basic") return "dashboard"
