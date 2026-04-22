@@ -10,6 +10,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "bcryptjs": "^3.0.3",
+    "html2pdf.js": "^0.14.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.8.0",

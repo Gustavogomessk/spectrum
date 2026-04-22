@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { jsPDF } from "jspdf"
+import html2pdf from "html2pdf.js"
 import { useSpectrum } from "../../context/SpectrumContext"
 import { adaptarMaterialCohere } from "../../services/cohere"
 import { extrairTextoPdf } from "../../services/pdfText"
@@ -26,6 +27,118 @@ function htmlParaTexto(html) {
   if (!html) return ""
   const doc = new DOMParser().parseFromString(html, "text/html")
   return (doc.body?.textContent || "").replace(/\n{3,}/g, "\n\n").trim()
+}
+
+async function gerarPdfFormatado(html, nomeBase, aluno, perfil) {
+  // Criar elemento com o conteúdo formatado
+  const elemento = document.createElement("div")
+  elemento.style.padding = "20px"
+  elemento.style.fontFamily = "Arial, sans-serif"
+  elemento.style.fontSize = "12px"
+  elemento.style.lineHeight = "1.6"
+  elemento.style.color = "#333"
+  
+  // Cabeçalho com metadados
+  const cabecalho = document.createElement("div")
+  cabecalho.style.marginBottom = "20px"
+  cabecalho.style.paddingBottom = "10px"
+  cabecalho.style.borderBottom = "2px solid #4dabf7"
+  cabecalho.innerHTML = `
+    <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #1971c2;">${nomeBase}</div>
+    <div style="font-size: 11px; color: #666;">
+      Aluno: <strong>${aluno || "—"}</strong> | 
+      Perfil: <strong>${perfil || "—"}</strong> | 
+      Data: <strong>${new Date().toLocaleDateString("pt-BR")}</strong>
+    </div>
+  `
+  
+  // Conteúdo adaptado
+  const conteudo = document.createElement("div")
+  conteudo.innerHTML = html
+  
+  // Aplicar estilos ao conteúdo HTML
+  conteudo.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((el) => {
+    el.style.marginTop = "16px"
+    el.style.marginBottom = "8px"
+    el.style.color = "#1971c2"
+    el.style.fontWeight = "bold"
+  })
+  
+  conteudo.querySelectorAll("h1").forEach((el) => {
+    el.style.fontSize = "18px"
+  })
+  
+  conteudo.querySelectorAll("h2").forEach((el) => {
+    el.style.fontSize = "16px"
+  })
+  
+  conteudo.querySelectorAll("h3").forEach((el) => {
+    el.style.fontSize = "14px"
+  })
+  
+  conteudo.querySelectorAll("p, li").forEach((el) => {
+    el.style.marginBottom = "6px"
+    el.style.fontSize = "12px"
+  })
+  
+  conteudo.querySelectorAll("ul, ol").forEach((el) => {
+    el.style.marginLeft = "20px"
+    el.style.marginBottom = "10px"
+  })
+  
+  conteudo.querySelectorAll("strong, b").forEach((el) => {
+    el.style.fontWeight = "bold"
+    el.style.color = "#1971c2"
+  })
+  
+  conteudo.querySelectorAll("em, i").forEach((el) => {
+    el.style.fontStyle = "italic"
+    el.style.color = "#555"
+  })
+  
+  conteudo.querySelectorAll("table").forEach((el) => {
+    el.style.borderCollapse = "collapse"
+    el.style.width = "100%"
+    el.style.marginBottom = "10px"
+    el.style.fontSize = "11px"
+  })
+  
+  conteudo.querySelectorAll("th, td").forEach((el) => {
+    el.style.border = "1px solid #ddd"
+    el.style.padding = "8px"
+    el.style.textAlign = "left"
+  })
+  
+  conteudo.querySelectorAll("th").forEach((el) => {
+    el.style.backgroundColor = "#f0f0f0"
+    el.style.fontWeight = "bold"
+  })
+  
+  elemento.appendChild(cabecalho)
+  elemento.appendChild(conteudo)
+  
+  return new Promise((resolve, reject) => {
+    const opcoes = {
+      margin: [10, 10, 10, 10],
+      filename: `${nomeBase}-adaptado.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, logging: false, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+    }
+    
+    html2pdf()
+      .set(opcoes)
+      .from(elemento)
+      .output("blob")
+      .then((blob) => {
+        resolve(blob)
+      })
+      .catch((err) => {
+        console.error("Erro ao gerar PDF:", err)
+        reject(err)
+      })
+  })
 }
 
 export default function AdaptarSection({ active }) {
@@ -161,23 +274,32 @@ export default function AdaptarSection({ active }) {
         const { error: up1 } = await supabase.storage.from("uploads-files").upload(pdfOriginalPath, arquivo, { upsert: true, contentType: "application/pdf" })
         if (up1) throw up1
 
-        const pdf = new jsPDF({ unit: "pt", format: "a4" })
-        const textoLimpo = htmlParaTexto(html) || "Material adaptado sem conteúdo textual."
-        const linhas = pdf.splitTextToSize(textoLimpo, 500)
-        let y = 48
-        pdf.setFont("helvetica", "normal")
-        pdf.setFontSize(11)
-        linhas.forEach((linha) => {
-          if (y > 780) {
-            pdf.addPage()
-            y = 48
-          }
-          pdf.text(linha, 48, y)
-          y += 16
-        })
-        const pdfBlob = pdf.output("blob")
-        const { error: up2 } = await supabase.storage.from("uploads-files").upload(pdfAdaptadoPath, pdfBlob, { upsert: true, contentType: "application/pdf" })
-        if (up2) throw up2
+        try {
+          // Gerar PDF com formatação HTML mantendo o conteúdo adaptado
+          const pdfBlob = await gerarPdfFormatado(html, nomeBase, aluno.nome, aluno.diagnostico)
+          const { error: up2 } = await supabase.storage.from("uploads-files").upload(pdfAdaptadoPath, pdfBlob, { upsert: true, contentType: "application/pdf" })
+          if (up2) throw up2
+        } catch (pdfErr) {
+          console.warn("Erro ao gerar PDF formatado, usando fallback com texto:", pdfErr)
+          // Fallback: gerar PDF simples com texto
+          const pdf = new jsPDF({ unit: "pt", format: "a4" })
+          const textoLimpo = htmlParaTexto(html) || "Material adaptado sem conteúdo textual."
+          const linhas = pdf.splitTextToSize(textoLimpo, 500)
+          let y = 48
+          pdf.setFont("helvetica", "normal")
+          pdf.setFontSize(11)
+          linhas.forEach((linha) => {
+            if (y > 780) {
+              pdf.addPage()
+              y = 48
+            }
+            pdf.text(linha, 48, y)
+            y += 16
+          })
+          const pdfBlob = pdf.output("blob")
+          const { error: up2 } = await supabase.storage.from("uploads-files").upload(pdfAdaptadoPath, pdfBlob, { upsert: true, contentType: "application/pdf" })
+          if (up2) throw up2
+        }
       }
 
       const created = await salvarMaterialApi({
@@ -219,8 +341,31 @@ export default function AdaptarSection({ active }) {
     }
   }
 
-  function baixarPDF() {
-    toast("Exportação PDF completa pode ser feita no backend (wkhtmltopdf / print).", "info")
+  async function baixarPDF() {
+    try {
+      if (!resultado.html) {
+        toast("Nenhum material adaptado para baixar.", "erro")
+        return
+      }
+      
+      toast("Gerando PDF formatado...", "info")
+      const pdfBlob = await gerarPdfFormatado(resultado.html, resultado.nomeArquivo, alunoPrincipal?.nome || "Material", alunoPrincipal?.diagnostico || "")
+      
+      // Criar link de download
+      const url = URL.createObjectURL(pdfBlob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `${resultado.nomeArquivo}-adaptado.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast("PDF baixado com sucesso!", "sucesso")
+    } catch (erro) {
+      console.error("Erro ao baixar PDF:", erro)
+      toast("Erro ao gerar PDF. Tente novamente.", "erro")
+    }
   }
 
   return (
