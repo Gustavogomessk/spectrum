@@ -13,6 +13,7 @@ import {
 } from "../services/supabaseData"
 import { sanitizeStorageSegment } from "../services/files"
 import { apiFetch } from "../services/api"
+import { apiFetch } from "../services/api"
 import { hash } from "bcryptjs"
 import {
   atualizarLicenca,
@@ -516,25 +517,28 @@ export function SpectrumProvider({ children }) {
           const token = sess?.session?.access_token
           if (!token) throw new Error("not_authenticated")
 
-          const formData = new FormData()
-          formData.append("file", payload.laudoFile)
-          formData.append("filename", payload.laudoFile.name)
-          formData.append("schoolId", usuario?.schoolId || null)
-          formData.append("alunoId", payload.id)
-          formData.append("storagePath", `escola-${schoolId}/user-${userId}/aluno-${payload.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`)
-
-          const res = await fetch("/api/alunos/upload-laudo", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
+          const fileReader = new FileReader()
+          const fileBase64 = await new Promise((resolve, reject) => {
+            fileReader.onload = () => {
+              const base64 = fileReader.result.split(",")[1]
+              resolve(base64)
+            }
+            fileReader.onerror = reject
+            fileReader.readAsDataURL(payload.laudoFile)
           })
 
-          if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.error || "upload_failed")
-          }
-
-          const row = await res.json()
+          const storagePath = `escola-${schoolId}/user-${userId}/aluno-${payload.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
+          const row = await apiFetch("/api/alunos/upload-laudo", {
+            method: "POST",
+            token,
+            body: {
+              fileBase64,
+              filename: payload.laudoFile.name,
+              schoolId: usuario?.schoolId || null,
+              alunoId: payload.id,
+              storagePath,
+            },
+          })
           await patchAluno(userId, payload.id, { laudo_url: row.file.storage_path })
         }
       } else {
@@ -544,25 +548,28 @@ export function SpectrumProvider({ children }) {
           const token = sess?.session?.access_token
           if (!token) throw new Error("not_authenticated")
 
-          const formData = new FormData()
-          formData.append("file", payload.laudoFile)
-          formData.append("filename", payload.laudoFile.name)
-          formData.append("schoolId", usuario?.schoolId || null)
-          formData.append("alunoId", created.id)
-          formData.append("storagePath", `escola-${schoolId}/user-${userId}/aluno-${created.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`)
-
-          const res = await fetch("/api/alunos/upload-laudo", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
+          const fileReader = new FileReader()
+          const fileBase64 = await new Promise((resolve, reject) => {
+            fileReader.onload = () => {
+              const base64 = fileReader.result.split(",")[1]
+              resolve(base64)
+            }
+            fileReader.onerror = reject
+            fileReader.readAsDataURL(payload.laudoFile)
           })
 
-          if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.error || "upload_failed")
-          }
-
-          const row = await res.json()
+          const storagePath = `escola-${schoolId}/user-${userId}/aluno-${created.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
+          const row = await apiFetch("/api/alunos/upload-laudo", {
+            method: "POST",
+            token,
+            body: {
+              fileBase64,
+              filename: payload.laudoFile.name,
+              schoolId: usuario?.schoolId || null,
+              alunoId: created.id,
+              storagePath,
+            },
+          })
           await patchAluno(userId, created.id, { laudo_url: row.file.storage_path })
         }
       }
