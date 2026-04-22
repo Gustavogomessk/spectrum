@@ -11,7 +11,8 @@ import {
   patchAluno,
   updateAluno,
 } from "../services/supabaseData"
-import { sanitizeStorageSegment, uploadPdf } from "../services/files"
+import { sanitizeStorageSegment } from "../services/files"
+import { apiFetch } from "../services/api"
 import { hash } from "bcryptjs"
 import {
   atualizarLicenca,
@@ -321,7 +322,7 @@ export function SpectrumProvider({ children }) {
         if (data) {
           setUsuario((prev) => ({
             ...prev,
-            tipoLicenca: data.license_type || "Basic",
+            tipoLicenca: data.license_type,
             papel: data.role || prev.papel,
           }))
         }
@@ -511,16 +512,64 @@ export function SpectrumProvider({ children }) {
       if (payload.id) {
         await updateAluno(userId, { ...payload, id: payload.id })
         if (payload.laudoFile) {
+          const { data: sess } = await supabase.auth.getSession()
+          const token = sess?.session?.access_token
+          if (!token) throw new Error("not_authenticated")
+
+          const fileReader = new FileReader()
+          const fileBase64 = await new Promise((resolve, reject) => {
+            fileReader.onload = () => {
+              const base64 = fileReader.result.split(",")[1]
+              resolve(base64)
+            }
+            fileReader.onerror = reject
+            fileReader.readAsDataURL(payload.laudoFile)
+          })
+
           const storagePath = `escola-${schoolId}/user-${userId}/aluno-${payload.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
-          const row = await uploadPdf({ file: payload.laudoFile, schoolId: usuario?.schoolId || null, userId, storagePath })
-          await patchAluno(userId, payload.id, { laudo_url: row.storage_path })
+          const row = await apiFetch("/api/alunos/upload-laudo", {
+            method: "POST",
+            token,
+            body: {
+              fileBase64,
+              filename: payload.laudoFile.name,
+              schoolId: usuario?.schoolId || null,
+              alunoId: payload.id,
+              storagePath,
+            },
+          })
+          await patchAluno(userId, payload.id, { laudo_url: row.file.storage_path })
         }
       } else {
         const created = await insertAluno(userId, payload)
         if (payload.laudoFile && created?.id) {
+          const { data: sess } = await supabase.auth.getSession()
+          const token = sess?.session?.access_token
+          if (!token) throw new Error("not_authenticated")
+
+          const fileReader = new FileReader()
+          const fileBase64 = await new Promise((resolve, reject) => {
+            fileReader.onload = () => {
+              const base64 = fileReader.result.split(",")[1]
+              resolve(base64)
+            }
+            fileReader.onerror = reject
+            fileReader.readAsDataURL(payload.laudoFile)
+          })
+
           const storagePath = `escola-${schoolId}/user-${userId}/aluno-${created.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
-          const row = await uploadPdf({ file: payload.laudoFile, schoolId: usuario?.schoolId || null, userId, storagePath })
-          await patchAluno(userId, created.id, { laudo_url: row.storage_path })
+          const row = await apiFetch("/api/alunos/upload-laudo", {
+            method: "POST",
+            token,
+            body: {
+              fileBase64,
+              filename: payload.laudoFile.name,
+              schoolId: usuario?.schoolId || null,
+              alunoId: created.id,
+              storagePath,
+            },
+          })
+          await patchAluno(userId, created.id, { laudo_url: row.file.storage_path })
         }
       }
       await refresh()
