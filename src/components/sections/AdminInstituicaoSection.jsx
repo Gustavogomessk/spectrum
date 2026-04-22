@@ -120,7 +120,7 @@ export default function AdminInstituicaoSection({ active }) {
           </div>
           <div className="card-corpo">
             <div className="linha-campos">
-              <spam class="campo">{tipoInstituicaoAtual}</spam>
+              <span className="campo">{instituicao?.plano || "Trial Institucional"}</span>
             </div>
            
           </div>
