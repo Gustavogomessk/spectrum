@@ -20,13 +20,24 @@ export default async function handler(req, res) {
     console.log(`[DELETE USER] Iniciando deleção do usuário: ${userId}`)
     
     // Delete user from auth (this will cascade delete related data due to ON DELETE CASCADE)
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
-    
+    console.log('[DELETE USER] calling supabaseAdmin.auth.admin.deleteUser with service role')
+    let deleteResult
+    try {
+      deleteResult = await supabaseAdmin.auth.admin.deleteUser(userId)
+    } catch (err) {
+      console.error(`[DELETE USER] Exception when calling deleteUser for ${userId}:`, err)
+      return res.status(500).json({ error: 'exception_deleted_user', message: err?.message || String(err), stack: err?.stack })
+    }
+
+    console.log('[DELETE USER] deleteResult:', deleteResult)
+
+    const { error } = deleteResult || {}
     if (error) {
       console.error(`[DELETE USER] Erro ao deletar usuário ${userId}:`, error)
       return res.status(400).json({ 
         error: error.message,
-        details: error.status || error.code
+        details: error.status || error.code,
+        raw: error
       })
     }
 
