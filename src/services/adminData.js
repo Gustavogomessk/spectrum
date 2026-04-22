@@ -286,43 +286,109 @@ export async function deletarBoleto(boletoId) {
   if (error) throw error
 }
 
+// Helper para testar DELETE diretamente (use no console: window.testDelete('id'))
+window.testDelete = async function(usuarioId) {
+  const { supabase } = await import('./supabaseClient.js')
+  
+  console.log(`%c[TEST DELETE] Testando delete do usuário: ${usuarioId}`, 'color: blue; font-weight: bold;')
+  
+  try {
+    // 1. Verificar se existe
+    const { data: existe } = await supabase.from("admin_users").select("*").eq("id", usuarioId).single()
+    console.log('1️⃣ Usuário encontrado?', existe ? 'SIM' : 'NÃO', existe)
+    
+    if (!existe) {
+      console.error('❌ Usuário não existe!')
+      return
+    }
+    
+    // 2. Tentar deletar
+    const { data, error, count } = await supabase.from("admin_users").delete().eq("id", usuarioId).select()
+    console.log('2️⃣ DELETE Response:', { data, error, count })
+    
+    // 3. Verificar se foi deletado
+    const { data: verificar } = await supabase.from("admin_users").select("*").eq("id", usuarioId).single()
+    console.log('3️⃣ Usuário ainda existe?', verificar ? 'SIM ❌' : 'NÃO ✅', verificar)
+    
+    if (error) {
+      console.error('%c❌ ERRO RLS:', 'color: red; font-weight: bold;', error)
+    } else if (data && data.length === 0 && verificar) {
+      console.error('%c❌ RLS BLOQUEOU SILENCIOSAMENTE - nenhum registro deletado', 'color: red; font-weight: bold;')
+    } else {
+      console.log('%c✅ DELETE FUNCIONOU!', 'color: green; font-weight: bold;')
+    }
+  } catch (err) {
+    console.error('❌ Erro:', err)
+  }
+}
+
 export async function deletarUsuario(usuarioId) {
   if (!supabase) return
   
   try {
-    // PASSO 1: Deletar do auth.users via API (CRÍTICO)
-    // Isso deleta o usuário da autenticação e seta user_id=NULL em admin_users
-    const { data } = await supabase.auth.getSession()
-    const token = data?.session?.access_token
+    console.log(`[DELETE] Iniciando deleção do usuário: ${usuarioId}`)
     
-    if (!token) {
-      throw new Error("Sessão expirada. Faça login novamente.")
+    // Verificar se o usuário existe
+    const { data: existsData, error: checkError } = await supabase
+      .from("admin_users")
+      .select("id, email, full_name")
+      .eq("id", usuarioId)
+      .single()
+    
+    if (checkError || !existsData) {
+      throw new Error(`Usuário ${usuarioId} não encontrado no banco de dados`)
     }
     
-    const authResponse = await fetch("/api/users/delete", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({ userId: usuarioId }),
-    })
+    console.log(`✓ Usuário encontrado:`, existsData)
     
-    if (!authResponse.ok) {
-      const errorData = await authResponse.json()
-      throw new Error(`Erro ao deletar do auth: ${errorData.error || authResponse.statusText}`)
+    // PASSO 1: Tentar deletar do auth.users via API
+    const { data: session } = await supabase.auth.getSession()
+    const token = session?.access_token
+    
+    if (token && typeof window !== 'undefined') {
+      try {
+        const authResponse = await fetch("/api/users/delete", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ userId: usuarioId }),
+        })
+        
+        if (authResponse.ok) {
+          const result = await authResponse.json()
+          console.log(`✓ Usuário ${usuarioId} deletado de auth.users:`, result)
+        } else {
+          console.warn(`Aviso: Erro ao deletar de auth (${authResponse.status}). Continuando...`)
+        }
+      } catch (authErr) {
+        console.warn(`Aviso: Não foi possível chamar API de delete do auth:`, authErr.message)
+      }
     }
     
-    console.log("✓ Usuário deletado de auth.users com sucesso")
+    // PASSO 2: Deletar do admin_users com log detalhado
+    console.log(`[DELETE] Executando DELETE query em admin_users para id=${usuarioId}`)
     
-    // PASSO 2: Deletar o registro em admin_users (por segurança)
-    const { error: dbError } = await supabase.from("admin_users").delete().eq("id", usuarioId)
+    const { data: deletedData, error: dbError, count } = await supabase
+      .from("admin_users")
+      .delete()
+      .eq("id", usuarioId)
+      .select()
+    
+    console.log(`[DELETE] Response:`, { deletedData, dbError, count })
+    
     if (dbError) {
-      console.error("Aviso: Erro ao deletar registro de admin_users:", dbError)
-      // Não falhar aqui, pois o auth.users foi deletado com sucesso
-    } else {
-      console.log("✓ Registro removido de admin_users")
+      console.error(`[DELETE] Erro RLS ao deletar usuário ${usuarioId}:`, dbError)
+      throw new Error(`Erro ao deletar usuário (RLS bloqueou): ${dbError.message}`)
     }
+    
+    if (!deletedData || deletedData.length === 0) {
+      console.error(`[DELETE] RLS silenciosamente bloqueou o DELETE - nenhum registro foi removido`)
+      throw new Error(`Política RLS bloqueou a deleção. Verifique as políticas no Supabase.`)
+    }
+    
+    console.log(`✓ Usuário ${usuarioId} deletado com sucesso de admin_users`, deletedData)
     
   } catch (error) {
     console.error("Erro ao deletar usuário:", error)
