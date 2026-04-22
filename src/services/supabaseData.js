@@ -26,8 +26,33 @@ async function getSchoolIdFromInstitutionId(institutionId) {
       return data.school_id
     }
 
-    // If no mapping exists, return the institutionId itself (might be a direct school_id)
-    console.log("[getSchoolIdFromInstitutionId] No mapping found, returning input:", institutionId)
+    // If no mapping exists, try server sync endpoint to create school if needed
+    console.log("[getSchoolIdFromInstitutionId] No mapping found, calling sync endpoint...")
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
+      if (!token) throw new Error("not_authenticated")
+
+      const response = await fetch("/api/institutions/sync-to-schools", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ institutionId }),
+      })
+
+      const result = await response.json()
+      if (result.success && result.schoolId) {
+        console.log("[getSchoolIdFromInstitutionId] Synced successfully:", institutionId, "→", result.schoolId)
+        return result.schoolId
+      }
+    } catch (syncErr) {
+      console.warn("[getSchoolIdFromInstitutionId] Sync endpoint failed:", syncErr)
+    }
+
+    // Fallback: return institutionId itself (might work if they're the same)
+    console.log("[getSchoolIdFromInstitutionId] Returning input as fallback:", institutionId)
     return institutionId
   } catch (err) {
     console.error("[getSchoolIdFromInstitutionId] Error:", err)
