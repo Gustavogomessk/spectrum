@@ -3,8 +3,10 @@ import { useSpectrum } from "../../context/SpectrumContext"
 import { QRCodeSVG } from "qrcode.react"
 import { AlertCircle, Info, CheckCircle } from "lucide-react"
 import AppIcon from "../ui/AppIcon"
+import { calcularValorBoleto, gerarDetalhesBoleto, formatarMoeda } from "../../utils/pricing"
 
 const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria"]
+const TIPOS_INSTITUICAO = ["Enterprise", "Pessoal"]
 
 export default function AdminInstituicaoSection({ active }) {
   const {
@@ -17,7 +19,11 @@ export default function AdminInstituicaoSection({ active }) {
     confirmarPagamentoSubadmin,
     notificacoesSubadmin,
     marcarNotificacaoLida,
+    editarInstituicao,
+    criarPagamentoSubadmin,
   } = useSpectrum()
+  const [mostrarCalculoBoleto, setMostrarCalculoBoleto] = useState(false)
+  const [tipoInstituicaoEdit, setTipoInstituicaoEdit] = useState(null)
   const [novo, setNovo] = useState({ nome: "", email: "", senha: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
 
   // Helpers para ícones e cores de notificação
@@ -50,6 +56,8 @@ export default function AdminInstituicaoSection({ active }) {
   const instituicaoId = usuario?.schoolId || "inst-1"
 
   const usuarios = useMemo(() => (adminData?.usuarios || []).filter((u) => u.instituicaoId === instituicaoId), [adminData, instituicaoId])
+  const instituicao = useMemo(() => (adminData?.instituicoes || []).find((i) => i.id === instituicaoId), [adminData, instituicaoId])
+  const tipoInstituicaoAtual = tipoInstituicaoEdit !== null ? tipoInstituicaoEdit : (instituicao?.tipoInstituicao || "Pessoal")
   const pagamentoAtual = pagamentosSubadmin[0] || null
   const qrMock = `MOCK-PIX|subadmin:${usuario?.id || "anon"}|instituicao:${instituicaoId}|${new Date().toISOString().slice(0, 10)}`
   const qrValue = pagamentoAtual?.qrCodePayload || qrMock
@@ -106,6 +114,124 @@ export default function AdminInstituicaoSection({ active }) {
             </button>
           </div>
         </div> */}
+
+        <div className="card mb-3">
+          <div className="card-cabecalho">
+            <span className="card-titulo">Tipo de Instituição</span>
+          </div>
+          <div className="card-corpo">
+            <div className="linha-campos">
+              <select 
+                className="campo" 
+                value={tipoInstituicaoAtual} 
+                onChange={(e) => setTipoInstituicaoEdit(e.target.value)}
+              >
+                {TIPOS_INSTITUICAO.map((tipo) => (
+                  <option key={tipo} value={tipo}>
+                    {tipo}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secundario"
+              onClick={async () => {
+                if (tipoInstituicaoEdit === null) return toast("Nenhuma mudança.", "info")
+                await editarInstituicao(instituicaoId, { tipoInstituicao: tipoInstituicaoAtual })
+                setTipoInstituicaoEdit(null)
+                toast("Tipo de instituição atualizado.", "sucesso")
+              }}
+            >
+              Atualizar tipo
+            </button>
+          </div>
+        </div>
+
+        <div className="card mb-3">
+          <div className="card-cabecalho">
+            <span className="card-titulo">Emissão de Boleto</span>
+          </div>
+          <div className="card-corpo">
+            <button
+              type="button"
+              className="btn btn-primario"
+              onClick={() => setMostrarCalculoBoleto(!mostrarCalculoBoleto)}
+            >
+              {mostrarCalculoBoleto ? "Ocultar cálculo" : "Visualizar cálculo e emitir"}
+            </button>
+
+            {mostrarCalculoBoleto && (
+              <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "var(--cor-fundo-secundario)", borderRadius: "0.5rem" }}>
+                <h4 style={{ marginBottom: "0.75rem", fontWeight: 600 }}>Resumo do Cálculo:</h4>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <strong>Tipo de Instituição:</strong> {tipoInstituicaoAtual}
+                </div>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <strong>Preço Base:</strong> {formatarMoeda(tipoInstituicaoAtual === "Enterprise" ? 100 : 50)}
+                </div>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <strong>Detalhes das Licenças:</strong>
+                  <table style={{ width: "100%", marginTop: "0.5rem", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--cor-borda)" }}>
+                        <th style={{ textAlign: "left", padding: "0.5rem" }}>Usuário</th>
+                        <th style={{ textAlign: "left", padding: "0.5rem" }}>Licença</th>
+                        <th style={{ textAlign: "right", padding: "0.5rem" }}>Valor Adicional</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usuarios.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} style={{ padding: "0.5rem", textAlign: "center", color: "var(--cor-texto-secundario)" }}>
+                            Nenhum usuário cadastrado
+                          </td>
+                        </tr>
+                      ) : (
+                        usuarios.map((u) => {
+                          const tipoLic = u.tipoLicenca || "Basic"
+                          const precoAdicional = {
+                            PRO: 30,
+                            Basic: 20,
+                            Secretaria: 10,
+                          }[tipoLic] || 0
+                          return (
+                            <tr key={u.id} style={{ borderBottom: "1px solid var(--cor-borda)" }}>
+                              <td style={{ padding: "0.5rem" }}>{u.nome}</td>
+                              <td style={{ padding: "0.5rem" }}>{tipoLic}</td>
+                              <td style={{ padding: "0.5rem", textAlign: "right" }}>{formatarMoeda(precoAdicional)}</td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ marginBottom: "1rem", paddingTop: "0.75rem", borderTop: "2px solid var(--cor-borda)" }}>
+                  <strong style={{ fontSize: "1.1rem" }}>
+                    Valor Total: {formatarMoeda(calcularValorBoleto(tipoInstituicaoAtual, usuarios))}
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sucesso"
+                  onClick={async () => {
+                    const valor = calcularValorBoleto(tipoInstituicaoAtual, usuarios)
+                    const referencia = `INST-${instituicaoId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}`
+                    await criarPagamentoSubadmin({
+                      referencia,
+                      valor,
+                    })
+                    setMostrarCalculoBoleto(false)
+                    toast("Boleto emitido com sucesso!", "sucesso")
+                  }}
+                >
+                  Emitir Boleto
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="card mb-3">
           <div className="card-cabecalho">

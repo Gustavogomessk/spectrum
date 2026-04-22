@@ -4,6 +4,7 @@ import { AlertCircle, BarChart3, Users, CreditCard, Mail, Building2, QrCode, Tra
 import { QRCodeSVG } from "qrcode.react"
 import JsBarcode from "jsbarcode"
 import AppIcon from "../ui/AppIcon"
+import { calcularValorBoleto } from "../../utils/pricing"
 
 export default function AdminGlobalSection({ active, activeSection }) {
   const {
@@ -194,6 +195,23 @@ export default function AdminGlobalSection({ active, activeSection }) {
     }),
     [instituicoes, usuarios, boletos, notificacoes, iaMetrics],
   )
+
+  // Calcular valor sugerido do boleto baseado na instituição selecionada
+  const valorSugeridoBoleto = useMemo(() => {
+    if (!boleto.instituicaoId) return ""
+    const instituicaoSelecionada = instituicoes.find((i) => i.id === boleto.instituicaoId)
+    if (!instituicaoSelecionada) return ""
+    const usuariosDaInstituicao = usuarios.filter((u) => u.instituicaoId === boleto.instituicaoId && u.ativo)
+    const valor = calcularValorBoleto(instituicaoSelecionada.tipoInstituicao || "Pessoal", usuariosDaInstituicao)
+    return valor.toString()
+  }, [boleto.instituicaoId, instituicoes, usuarios])
+
+  // Atualizar o valor sugerido automaticamente quando a instituição muda
+  useEffect(() => {
+    if (valorSugeridoBoleto && !boleto.valor) {
+      setBoleto((s) => ({ ...s, valor: valorSugeridoBoleto }))
+    }
+  }, [valorSugeridoBoleto, boleto.instituicaoId])
 
   const senhaForte = (senha) =>
     typeof senha === "string" && senha.length >= 8 && /[A-Z]/.test(senha) && /[a-z]/.test(senha) && /\d/.test(senha) && /[^A-Za-z0-9]/.test(senha)
@@ -481,7 +499,7 @@ export default function AdminGlobalSection({ active, activeSection }) {
                 <span className="card-titulo">Criar boleto</span>
               </div>
               <div className="card-corpo">
-                <select className="campo" value={boleto.instituicaoId} onChange={(e) => setBoleto((s) => ({ ...s, instituicaoId: e.target.value }))}>
+                <select className="campo" value={boleto.instituicaoId} onChange={(e) => setBoleto((s) => ({ ...s, instituicaoId: e.target.value, valor: "" }))}>
                   <option value="">Selecione a instituição</option>
                   {instituicoes.filter((i) => i.ativo).map((i) => (
                     <option key={i.id} value={i.id}>
@@ -489,9 +507,17 @@ export default function AdminGlobalSection({ active, activeSection }) {
                     </option>
                   ))}
                 </select>
+                {boleto.instituicaoId && valorSugeridoBoleto && (
+                  <div style={{ padding: "0.75rem", backgroundColor: "var(--cor-fundo-secundario)", borderRadius: "0.5rem", marginBottom: "0.75rem", fontSize: "0.9rem" }}>
+                    <strong>📊 Prévia calculada:</strong> R$ {parseFloat(valorSugeridoBoleto).toFixed(2)} 
+                    <div style={{ fontSize: "0.85rem", color: "var(--cor-texto-secundario)", marginTop: "0.25rem" }}>
+                      (Baseado no tipo de instituição e licenças dos usuários - Você pode alterar)
+                    </div>
+                  </div>
+                )}
                 <div className="linha-campos">
                   <input className="campo" placeholder="Referência (ex: 04/2026)" value={boleto.referencia} onChange={(e) => setBoleto((s) => ({ ...s, referencia: e.target.value }))} />
-                  <input className="campo" placeholder="Valor (R$)" type="number" value={boleto.valor} onChange={(e) => setBoleto((s) => ({ ...s, valor: e.target.value }))} />
+                  <input className="campo" placeholder="Valor (R$)" type="number" step="0.01" value={boleto.valor} onChange={(e) => setBoleto((s) => ({ ...s, valor: e.target.value }))} />
                 </div>
                 <button
                   type="button"

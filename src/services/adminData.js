@@ -25,6 +25,7 @@ function toInstituicao(row) {
     cnpj: row.document || "",
     plano: row.plan || "Trial Institucional",
     limiteUsuarios: row.user_limit ?? 0,
+    tipoInstituicao: row.institution_type || "Pessoal",
     ativo: row.active !== false,
   }
 }
@@ -92,11 +93,26 @@ async function fetchBoletos() {
 
 async function fetchIaMetrics() {
   const [{ data: usage }, { count: adaptacoes }] = await Promise.all([
-    supabase.from("ai_usage_logs").select("total_tokens, estimated_cost, request_kind"),
+    supabase.from("ai_usage_logs").select("total_tokens, prompt_tokens, completion_tokens, request_kind"),
     supabase.from("materiais").select("id", { count: "exact", head: true }),
   ])
+  
+  // Taxas de preço (por 1 milhão de tokens)
+  const TAXA_INPUT = 0.15 // $0.15 por 1M tokens de entrada
+  const TAXA_OUTPUT = 0.60 // $0.60 por 1M tokens de saída
+  
   const totalTokens = (usage || []).reduce((acc, row) => acc + Number(row.total_tokens || 0), 0)
-  const custoEstimado = (usage || []).reduce((acc, row) => acc + Number(row.estimated_cost || 0), 0)
+  
+  // Calcular custo estimado baseado em prompt_tokens e completion_tokens
+  const custoEstimado = (usage || []).reduce((acc, row) => {
+    const promptTokens = Number(row.prompt_tokens || 0)
+    const completionTokens = Number(row.completion_tokens || 0)
+    
+    // Custo = (prompt_tokens * taxa_input + completion_tokens * taxa_output) / 1.000.000
+    const custoPorLinha = (promptTokens * TAXA_INPUT + completionTokens * TAXA_OUTPUT) / 1000000
+    return acc + custoPorLinha
+  }, 0)
+  
   const perguntas = (usage || []).filter((row) => row.request_kind === "chat").length
   const adaptacoesIa = (usage || []).filter((row) => row.request_kind === "adaptacao").length
   return {
@@ -131,6 +147,7 @@ export async function createInstituicao(payload) {
     document: payload.cnpj || null,
     plan: payload.plano || "Trial Institucional",
     user_limit: Number(payload.limiteUsuarios || 0),
+    institution_type: payload.tipoInstituicao || "Pessoal",
     active: true,
   }
   const { data, error } = await supabase.from("admin_institutions").insert(insert).select().single()
@@ -190,6 +207,25 @@ export function gerarSenhaAleatoria() {
   let senha = ""
   for (let i = 0; i < 12; i++) senha += chars.charAt(Math.floor(Math.random() * chars.length))
   return senha
+}
+
+export async function atualizarInstituicao(instituicaoId, updates) {
+  if (!supabase) return null
+  const updatePayload = {}
+  if (updates.tipoInstituicao) updatePayload.institution_type = updates.tipoInstituicao
+  if (updates.nome) updatePayload.name = updates.nome
+  if (updates.plano) updatePayload.plan = updates.plano
+  if (updates.cnpj) updatePayload.document = updates.cnpj
+  if (updates.limiteUsuarios !== undefined) updatePayload.user_limit = Number(updates.limiteUsuarios)
+  
+  const { data, error } = await supabase
+    .from("admin_institutions")
+    .update(updatePayload)
+    .eq("id", instituicaoId)
+    .select()
+    .single()
+  if (error) throw error
+  return toInstituicao(data)
 }
 
 export async function desabilitarInstituicao(instituicaoId) {
@@ -448,6 +484,7 @@ export async function editarInstituicao(instituicaoId, dados) {
     document: dados.cnpj,
     plan: dados.plano,
     user_limit: Number(dados.limiteUsuarios || 0),
+    institution_type: dados.tipoInstituicao || "Pessoal",
   }
   const { error } = await supabase.from("admin_institutions").update(update).eq("id", instituicaoId)
   if (error) throw error
