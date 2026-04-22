@@ -176,7 +176,8 @@ export async function createUsuarioInstituicao(payload) {
     role: payload.papel || "usuario",
     licenses: Number(payload.licencas || 1),
     // If creating a subadmin, default to 'Sem Licença' and 0 licenses unless explicitly set
-    license_type: payload.tipoLicenca || (payload.papel === "subadmin" ? "Sem Licença" : "Basic"),
+    // For trial users (no instituicaoId), grant PRO license so trial has full access
+    license_type: payload.tipoLicenca || (payload.instituicaoId ? (payload.papel === "subadmin" ? "Sem Licença" : "Basic") : "PRO"),
     account_type: payload.accountType || (payload.instituicaoId ? "institution" : "trial"),
     active: true,
   }

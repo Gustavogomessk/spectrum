@@ -444,7 +444,9 @@ export function SpectrumProvider({ children }) {
 
       // Registrar o usuário em admin_users para que apareça na gestão
       if (data.user) {
-        try {
+          try {
+          const isTrial = !schoolId
+          const defaultLicense = isTrial ? "PRO" : (papel === "subadmin" ? "Sem Licença" : "Basic")
           await supabase.from("admin_users").insert({
             id: data.user.id,
             full_name: nome,
@@ -454,7 +456,7 @@ export function SpectrumProvider({ children }) {
             account_type: schoolId ? "institution" : "trial",
             active: true,
             licenses: Number(licencas || (papel === "subadmin" ? 0 : 1)),
-            license_type: tipoLicenca || (papel === "subadmin" ? "Sem Licença" : "Basic"),
+            license_type: tipoLicenca || defaultLicense,
           }).select().single()
         } catch (err) {
           console.error("Erro ao registrar usuário em admin_users:", err)
