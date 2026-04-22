@@ -3,17 +3,6 @@
 -- Execute no Supabase: SQL Editor → New query → Run
 -- =============================================================================
 
--- If admin_institutions exists and schools is empty, copy data over
-insert into public.schools (id, name, slug, is_public)
-select 
-  gen_random_uuid() as id,
-  name,
-  slugify(name) as slug,
-  true as is_public
-from public.admin_institutions
-where not exists (select 1 from public.schools)
-on conflict do nothing;
-
 -- Helper function to slugify text
 create or replace function slugify(text) returns text as $$
   select lower(
@@ -26,6 +15,17 @@ create or replace function slugify(text) returns text as $$
     )
   )
 $$ language sql immutable;
+
+-- If admin_institutions exists and schools is empty, copy data over
+insert into public.schools (id, name, slug, is_public)
+select 
+  gen_random_uuid() as id,
+  name,
+  slugify(name) as slug,
+  true as is_public
+from public.admin_institutions
+where not exists (select 1 from public.schools)
+on conflict do nothing;
 
 -- Create mapping table to track correspondence between admin_institutions and schools
 create table if not exists public.institution_school_mapping (
