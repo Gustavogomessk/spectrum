@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react"
+import { supabase } from "../../services/supabaseClient"
 import { useSpectrum } from "../../context/SpectrumContext"
 import { AlertCircle, BarChart3, Users, CreditCard, Mail, Building2, QrCode, Trash2, Info, CheckCircle } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
@@ -9,6 +10,7 @@ import { calcularValorBoleto } from "../../utils/pricing"
 export default function AdminGlobalSection({ active, activeSection }) {
   const {
     adminData,
+    usuario,
     criarInstituicao,
     editarInstituicao,
     criarSubadmin,
@@ -67,6 +69,9 @@ export default function AdminGlobalSection({ active, activeSection }) {
   const [usuarioEdit, setUsuarioEdit] = useState(null)
   const [boletoModal, setBoletoModal] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [reauthOpen, setReauthOpen] = useState(false)
+  const [reauthPassword, setReauthPassword] = useState("")
+  const [reauthLoading, setReauthLoading] = useState(false)
   const [filtroConta, setFiltroConta] = useState("todos")
   const [buscaUsuario, setBuscaUsuario] = useState("")
   const barcodeRef = useRef(null)
@@ -1076,27 +1081,30 @@ export default function AdminGlobalSection({ active, activeSection }) {
                   </div>
                 )}
                 <div style={{ display: "flex", gap: "0.75rem" }}>
-                  <button
+                          <button
                     type="button"
                     className="btn btn-perigo"
                     style={{ flex: 1 }}
                     onClick={async () => {
-                      try {
-                        if (confirmDelete.tipo === "cliente") {
-                          await deletarInstituicao(confirmDelete.id)
-                          toast("Cliente deletado com sucesso.", "sucesso")
-                        } else if (confirmDelete.tipo === "boleto") {
-                          await deletarBoleto(confirmDelete.id)
-                          toast("Boleto deletado com sucesso.", "sucesso")
-                        } else if (confirmDelete.tipo === "usuario") {
-                          await deletarUsuario(confirmDelete.id)
-                          toast("Usuário deletado com sucesso.", "sucesso")
+                        try {
+                          if (confirmDelete.tipo === "usuario") {
+                            // abrir modal de reauth para confirmar senha
+                            setReauthOpen(true)
+                            return
+                          }
+
+                          if (confirmDelete.tipo === "cliente") {
+                            await deletarInstituicao(confirmDelete.id)
+                            toast("Cliente deletado com sucesso.", "sucesso")
+                          } else if (confirmDelete.tipo === "boleto") {
+                            await deletarBoleto(confirmDelete.id)
+                            toast("Boleto deletado com sucesso.", "sucesso")
+                          }
+                          setConfirmDelete(null)
+                        } catch (erro) {
+                          console.error("Erro ao deletar:", erro)
+                          toast("Erro ao deletar. Tente novamente.", "erro")
                         }
-                        setConfirmDelete(null)
-                      } catch (erro) {
-                        console.error("Erro ao deletar:", erro)
-                        toast("Erro ao deletar. Tente novamente.", "erro")
-                      }
                     }}
                   >
                     Sim, deletar
@@ -1106,6 +1114,88 @@ export default function AdminGlobalSection({ active, activeSection }) {
                     className="btn btn-secundario"
                     style={{ flex: 1 }}
                     onClick={() => setConfirmDelete(null)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Re-auth modal: confirmar senha do admin antes de deletar usuário */}
+        {reauthOpen && (
+          <div style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 3000,
+          }}>
+            <div className="card" style={{ width: "90%", maxWidth: "360px" }}>
+              <div className="card-corpo">
+                <h3 className="card-titulo">Confirme sua senha</h3>
+                <p style={{ marginBottom: "1rem" }}>Digite sua senha para confirmar a exclusão do usuário <strong>{confirmDelete?.nome}</strong>.</p>
+                <input
+                  className="campo"
+                  type="password"
+                  placeholder="Senha"
+                  value={reauthPassword}
+                  onChange={(e) => setReauthPassword(e.target.value)}
+                  disabled={reauthLoading}
+                />
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+                  <button
+                    type="button"
+                    className="btn btn-perigo"
+                    style={{ flex: 1 }}
+                    onClick={async () => {
+                      try {
+                        setReauthLoading(true)
+                        const email = usuario?.email
+                        if (!email) throw new Error('Usuário admin não encontrado. Faça login novamente.')
+                        const { error, data } = await supabase.auth.signInWithPassword({ email: String(email).trim(), password: reauthPassword })
+                        console.log('[REAUTH] signInWithPassword result', { error, data })
+                        if (error) {
+                          throw error
+                        }
+                        // Garantir que a sessão retornada seja aplicada ao cliente
+                        try {
+                          if (data?.session) {
+                            await supabase.auth.setSession({
+                              access_token: data.session.access_token,
+                              refresh_token: data.session.refresh_token,
+                            })
+                          }
+                        } catch (setErr) {
+                          console.warn('Não foi possível setSession:', setErr)
+                        }
+                        const sessAfter = await supabase.auth.getSession()
+                        console.log('[REAUTH] session after setSession/getSession', sessAfter)
+                        // Após reauth, efetuar a deleção (com sessão aplicada)
+                        await deletarUsuario(confirmDelete.id)
+                        toast('Usuário deletado com sucesso.', 'sucesso')
+                        setReauthOpen(false)
+                        setConfirmDelete(null)
+                        setReauthPassword('')
+                      } catch (err) {
+                        console.error('Reauth falhou:', err)
+                        toast(err?.message || 'Falha ao reautenticar. Tente novamente.', 'erro')
+                      } finally {
+                        setReauthLoading(false)
+                      }
+                    }}
+                    disabled={reauthLoading}
+                  >
+                    Confirmar e deletar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secundario"
+                    style={{ flex: 1 }}
+                    onClick={() => { setReauthOpen(false); setReauthPassword('') }}
+                    disabled={reauthLoading}
                   >
                     Cancelar
                   </button>

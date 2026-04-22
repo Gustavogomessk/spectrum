@@ -405,29 +405,39 @@ export async function deletarUsuario(usuarioId) {
     
     console.log(`✓ Usuário encontrado:`, existsData)
     
-    // PASSO 1: Tentar deletar do auth.users via API
-    const { data: session } = await supabase.auth.getSession()
-    const token = session?.access_token
-    
+    // PASSO 1: Tentar deletar do auth.users via API (exigido)
+    const sessionResult = await supabase.auth.getSession()
+    console.log('[DELETE] supabase.auth.getSession() =>', sessionResult)
+    const { data, error: sessionError } = sessionResult || {}
+    const token = data?.session?.access_token
+    console.log('[DELETE] extracted token:', !!token)
+
+    if (!token || typeof window === 'undefined') {
+      console.warn('[DELETE] Sem sessão válida do admin: não será possível remover o usuário de auth.users nesta chamada. Tentando apenas remover o registro em admin_users. Para garantir remoção em Authentication → Users, faça login novamente ou execute a deleção via rota protegida no servidor.')
+    }
+
+    // Chamar a rota servidor que usa a service role para remover do auth.users
+    let authDeleted = false
     if (token && typeof window !== 'undefined') {
       try {
-        const authResponse = await fetch("/api/users/delete", {
-          method: "DELETE",
+        const authResponse = await fetch('/api/users/delete', {
+          method: 'DELETE',
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ userId: usuarioId }),
         })
-        
+
+        const authResult = await (authResponse.ok ? authResponse.json() : authResponse.json().catch(() => null))
         if (authResponse.ok) {
-          const result = await authResponse.json()
-          console.log(`✓ Usuário ${usuarioId} deletado de auth.users:`, result)
+          console.log(`✓ Usuário ${usuarioId} deletado de auth.users:`, authResult)
+          authDeleted = true
         } else {
-          console.warn(`Aviso: Erro ao deletar de auth (${authResponse.status}). Continuando...`)
+          console.error(`[DELETE] Falha ao deletar de auth.users:`, authResponse.status, authResult)
         }
       } catch (authErr) {
-        console.warn(`Aviso: Não foi possível chamar API de delete do auth:`, authErr.message)
+        console.warn(`[DELETE] Não foi possível chamar /api/users/delete:`, authErr)
       }
     }
     
@@ -435,9 +445,9 @@ export async function deletarUsuario(usuarioId) {
     console.log(`[DELETE] Executando DELETE query em admin_users para id=${usuarioId}`)
     
     const { data: deletedData, error: dbError, count } = await supabase
-      .from("admin_users")
+      .from('admin_users')
       .delete()
-      .eq("id", usuarioId)
+      .eq('id', usuarioId)
       .select()
     
     console.log(`[DELETE] Response:`, { deletedData, dbError, count })

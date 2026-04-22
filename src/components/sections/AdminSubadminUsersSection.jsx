@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react"
+import { supabase } from "../../services/supabaseClient"
 import { useSpectrum } from "../../context/SpectrumContext"
 import { Edit2, Trash2, Plus, X } from "lucide-react"
 import AppIcon from "../ui/AppIcon"
@@ -19,6 +20,9 @@ export default function AdminSubadminUsersSection({ active }) {
   const [novo, setNovo] = useState({ nome: "", email: "", senha: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
   const [usuarioEdit, setUsuarioEdit] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [reauthOpen, setReauthOpen] = useState(false)
+  const [reauthPassword, setReauthPassword] = useState("")
+  const [reauthLoading, setReauthLoading] = useState(false)
   const [showFormNovo, setShowFormNovo] = useState(false)
 
   const instituicaoId = usuario?.schoolId || "inst-1"
@@ -106,9 +110,8 @@ export default function AdminSubadminUsersSection({ active }) {
 
   async function handleDeletarUsuario() {
     try {
-      await deletarUsuario(confirmDelete)
-      setConfirmDelete(null)
-      toast("Usuário deletado com sucesso.", "sucesso")
+      // Abrir modal de reauth para confirmar senha antes de deletar
+      setReauthOpen(true)
     } catch (err) {
       toast(`Erro ao deletar usuário: ${err.message}`, "erro")
     }
@@ -421,7 +424,7 @@ export default function AdminSubadminUsersSection({ active }) {
                   type="button"
                   className="btn"
                   style={{ flex: 1, background: "var(--cor-perigo)", color: "white" }}
-                  onClick={handleDeletarUsuario}
+                    onClick={handleDeletarUsuario}
                 >
                   Deletar
                 </button>
@@ -430,6 +433,87 @@ export default function AdminSubadminUsersSection({ active }) {
                   className="btn btn-secundario"
                   style={{ flex: 1 }}
                   onClick={() => setConfirmDelete(null)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reauthOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 3000,
+            padding: "1rem",
+          }}
+        >
+          <div className="card" style={{ width: "100%", maxWidth: "420px" }}>
+            <div className="card-corpo">
+              <h3 className="card-titulo">Confirme sua senha</h3>
+              <p>Digite sua senha para confirmar a exclusão do usuário selecionado.</p>
+              <input
+                className="campo"
+                type="password"
+                placeholder="Senha"
+                value={reauthPassword}
+                onChange={(e) => setReauthPassword(e.target.value)}
+                disabled={reauthLoading}
+              />
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ flex: 1, background: "var(--cor-perigo)", color: "white" }}
+                  onClick={async () => {
+                    try {
+                      setReauthLoading(true)
+                      const email = usuario?.email
+                      if (!email) throw new Error('Usuário admin não encontrado. Faça login novamente.')
+                      const { error, data } = await supabase.auth.signInWithPassword({ email: String(email).trim(), password: reauthPassword })
+                      console.log('[REAUTH SUBADMIN] signInWithPassword result', { error, data })
+                      if (error) throw error
+                      try {
+                        if (data?.session) {
+                          await supabase.auth.setSession({
+                            access_token: data.session.access_token,
+                            refresh_token: data.session.refresh_token,
+                          })
+                        }
+                      } catch (setErr) {
+                        console.warn('Não foi possível setSession:', setErr)
+                      }
+                      const sessAfter = await supabase.auth.getSession()
+                      console.log('[REAUTH SUBADMIN] session after setSession/getSession', sessAfter)
+                      await deletarUsuario(confirmDelete)
+                      setConfirmDelete(null)
+                      setReauthOpen(false)
+                      setReauthPassword('')
+                      toast('Usuário deletado com sucesso.', 'sucesso')
+                    } catch (err) {
+                      console.error('Reauth falhou:', err)
+                      toast(err?.message || 'Falha ao reautenticar. Tente novamente.', 'erro')
+                    } finally {
+                      setReauthLoading(false)
+                    }
+                  }}
+                  disabled={reauthLoading}
+                >
+                  Confirmar e deletar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secundario"
+                  style={{ flex: 1 }}
+                  onClick={() => { setReauthOpen(false); setReauthPassword('') }}
+                  disabled={reauthLoading}
                 >
                   Cancelar
                 </button>
