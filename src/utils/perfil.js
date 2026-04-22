@@ -83,21 +83,25 @@ export function canAccessDashboard(usuario) {
 
 export function canAccessAdaptar(usuario) {
   // Adaptar Material: apenas PRO
+  if (usuario?.trial) return true
+  const licenca = usuario?.tipoLicenca
   if (isSecretaria(usuario)) return false
   if (usuario?.tipoLicenca === "Sem Licença") return false
   // Allow trial users full access to Adaptar
-  if (usuario?.trial) return true
-  const licenca = usuario?.tipoLicenca
+  
+  
   return licenca === "PRO"
 }
 
 export function canAccessChatbot(usuario) {
   // Chatbot: apenas PRO
+  if (usuario?.trial) return true
   if (isSecretaria(usuario)) return false
+  const licenca = usuario?.tipoLicenca
   if (usuario?.tipoLicenca === "Sem Licença") return false
   // Allow trial users full access to Chatbot
-  if (usuario?.trial) return true
-  const licenca = usuario?.tipoLicenca
+  
+  
   return licenca === "PRO"
 }
 
