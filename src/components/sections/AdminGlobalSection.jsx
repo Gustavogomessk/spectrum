@@ -1055,17 +1055,22 @@ export default function AdminGlobalSection({ active, activeSection }) {
                     className="btn btn-perigo"
                     style={{ flex: 1 }}
                     onClick={async () => {
-                      if (confirmDelete.tipo === "cliente") {
-                        await deletarInstituicao(confirmDelete.id)
-                        toast("Cliente deletado com sucesso.", "sucesso")
-                      } else if (confirmDelete.tipo === "boleto") {
-                        await deletarBoleto(confirmDelete.id)
-                        toast("Boleto deletado com sucesso.", "sucesso")
-                      } else if (confirmDelete.tipo === "usuario") {
-                        await deletarUsuario(confirmDelete.id)
-                        toast("Usuário deletado com sucesso.", "sucesso")
+                      try {
+                        if (confirmDelete.tipo === "cliente") {
+                          await deletarInstituicao(confirmDelete.id)
+                          toast("Cliente deletado com sucesso.", "sucesso")
+                        } else if (confirmDelete.tipo === "boleto") {
+                          await deletarBoleto(confirmDelete.id)
+                          toast("Boleto deletado com sucesso.", "sucesso")
+                        } else if (confirmDelete.tipo === "usuario") {
+                          await deletarUsuario(confirmDelete.id)
+                          toast("Usuário deletado com sucesso.", "sucesso")
+                        }
+                        setConfirmDelete(null)
+                      } catch (erro) {
+                        console.error("Erro ao deletar:", erro)
+                        toast("Erro ao deletar. Tente novamente.", "erro")
                       }
-                      setConfirmDelete(null)
                     }}
                   >
                     Sim, deletar

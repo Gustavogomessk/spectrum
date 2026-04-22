@@ -17,16 +17,29 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log(`[DELETE USER] Iniciando deleção do usuário: ${userId}`)
+    
     // Delete user from auth (this will cascade delete related data due to ON DELETE CASCADE)
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    
     if (error) {
-      console.error("Erro ao deletar usuário do auth:", error)
-      return res.status(400).json({ error: error.message })
+      console.error(`[DELETE USER] Erro ao deletar usuário ${userId}:`, error)
+      return res.status(400).json({ 
+        error: error.message,
+        details: error.status || error.code
+      })
     }
 
-    return res.status(200).json({ message: "Usuário deletado com sucesso" })
+    console.log(`[DELETE USER] ✓ Usuário ${userId} deletado com sucesso de auth.users`)
+    return res.status(200).json({ 
+      message: "Usuário deletado com sucesso",
+      userId: userId
+    })
   } catch (err) {
-    console.error("Erro ao deletar usuário:", err)
-    return res.status(500).json({ error: err.message })
+    console.error(`[DELETE USER] Erro crítico ao deletar ${userId}:`, err)
+    return res.status(500).json({ 
+      error: err.message,
+      stack: err.stack
+    })
   }
 }

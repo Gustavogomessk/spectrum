@@ -289,32 +289,45 @@ export async function deletarBoleto(boletoId) {
 export async function deletarUsuario(usuarioId) {
   if (!supabase) return
   
-  // Primeiro, tentar deletar do auth via API
   try {
+    // PASSO 1: Deletar do auth.users via API (CRÍTICO)
+    // Isso deleta o usuário da autenticação e seta user_id=NULL em admin_users
     const { data } = await supabase.auth.getSession()
     const token = data?.session?.access_token
     
-    if (token) {
-      const response = await fetch("/api/users/delete", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId: usuarioId }),
-      })
-      if (!response.ok) {
-        const err = await response.json()
-        console.error("Erro ao deletar usuário do auth:", err)
-      }
+    if (!token) {
+      throw new Error("Sessão expirada. Faça login novamente.")
     }
-  } catch (err) {
-    console.error("Erro ao chamar API de deletar usuário:", err)
+    
+    const authResponse = await fetch("/api/users/delete", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userId: usuarioId }),
+    })
+    
+    if (!authResponse.ok) {
+      const errorData = await authResponse.json()
+      throw new Error(`Erro ao deletar do auth: ${errorData.error || authResponse.statusText}`)
+    }
+    
+    console.log("✓ Usuário deletado de auth.users com sucesso")
+    
+    // PASSO 2: Deletar o registro em admin_users (por segurança)
+    const { error: dbError } = await supabase.from("admin_users").delete().eq("id", usuarioId)
+    if (dbError) {
+      console.error("Aviso: Erro ao deletar registro de admin_users:", dbError)
+      // Não falhar aqui, pois o auth.users foi deletado com sucesso
+    } else {
+      console.log("✓ Registro removido de admin_users")
+    }
+    
+  } catch (error) {
+    console.error("Erro ao deletar usuário:", error)
+    throw error
   }
-  
-  // Deletar do banco de dados local
-  const { error } = await supabase.from("admin_users").delete().eq("id", usuarioId)
-  if (error) throw error
 }
 
 export async function editarUsuario(usuarioId, dados) {
