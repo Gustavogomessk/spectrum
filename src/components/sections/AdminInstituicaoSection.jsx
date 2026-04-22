@@ -18,7 +18,7 @@ export default function AdminInstituicaoSection({ active }) {
     notificacoesSubadmin,
     marcarNotificacaoLida,
   } = useSpectrum()
-  const [novo, setNovo] = useState({ nome: "", email: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
+  const [novo, setNovo] = useState({ nome: "", email: "", senha: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
 
   // Helpers para ícones e cores de notificação
   const getIconForNotificationType = (tipo) => {
@@ -69,6 +69,15 @@ export default function AdminInstituicaoSection({ active }) {
               <input className="campo" placeholder="Email" value={novo.email} onChange={(e) => setNovo((s) => ({ ...s, email: e.target.value }))} />
             </div>
             <div className="linha-campos">
+              <input
+                className="campo"
+                type="password"
+                placeholder="Senha para login (mín. 6 caracteres)"
+                value={novo.senha}
+                onChange={(e) => setNovo((s) => ({ ...s, senha: e.target.value }))}
+              />
+            </div>
+            <div className="linha-campos">
               <select className="campo" value={novo.papel} onChange={(e) => setNovo((s) => ({ ...s, papel: e.target.value }))}>
                 <option value="secretaria">Secretário</option>
                 <option value="psicopedagogo">Psicopedagogo</option>
@@ -86,9 +95,10 @@ export default function AdminInstituicaoSection({ active }) {
               type="button"
               className="btn btn-primario"
               onClick={async () => {
-                if (!novo.nome || !novo.email) return toast("Preencha nome e email.", "erro")
+                if (!novo.nome || !novo.email || !novo.senha) return toast("Preencha nome, email e senha.", "erro")
+                if (String(novo.senha || "").length < 6) return toast("A senha deve ter no mínimo 6 caracteres (exigência do Supabase).", "erro")
                 await criarUsuarioInstituicao({ ...novo, instituicaoId })
-                setNovo({ nome: "", email: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
+                setNovo({ nome: "", email: "", senha: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })
                 toast("Usuário criado.", "sucesso")
               }}
             >

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { createClient } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "../services/supabaseClient"
 import {
   deleteAluno as apiDeleteAluno,
@@ -49,6 +50,19 @@ import { isErroRelacionamentoPostgrest, isErroTabelaAusente, resumoErroSupabase 
 import { funcaoMetadataDePapelCadastro, isAdmin, PERFIL, SECOES_SO_EDUCADOR, perfilCodigoDeMetadata } from "../utils/perfil"
 
 const SpectrumContext = createContext(null)
+
+function createEphemeralSupabaseClient() {
+  const url = import.meta.env.VITE_SUPABASE_URL
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+}
 
 
 function iniciaisDe(nome) {
@@ -366,7 +380,7 @@ export function SpectrumProvider({ children }) {
   }, [])
 
   const cadastroSupabase = useCallback(
-    async ({ nome, email, senha, papel, escola, schoolId }) => {
+    async ({ nome, email, senha, papel, escola, schoolId, licencas, tipoLicenca }) => {
       if (!supabase) {
         toast("Supabase não configurado. Adicione VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env e reinicie o servidor.", "erro")
         return { ok: false }
@@ -410,8 +424,8 @@ export function SpectrumProvider({ children }) {
             institution_id: schoolId || null,
             account_type: schoolId ? "institution" : "trial",
             active: true,
-            licenses: 1,
-            license_type: "Basic",
+            licenses: Number(licencas || 1),
+            license_type: tipoLicenca || "Basic",
           }).select().single()
         } catch (err) {
           console.error("Erro ao registrar usuário em admin_users:", err)
@@ -523,20 +537,54 @@ export function SpectrumProvider({ children }) {
           return false
         }
 
-        const res = await cadastroSupabase({
-          nome: payload.nome,
-          email: payload.email,
-          senha: senhaLimpa,
-          papel: "subadmin",
-          escola: payload.instituicaoId,
-          schoolId: payload.instituicaoId,
-        })
-
-        if (!res?.ok) {
-          console.log("Erro ao criar SubAdmin no Supabase:", res)
+        // Criar o usuário SEM trocar a sessão atual (cliente efêmero sem persistência)
+        const ephemeral = createEphemeralSupabaseClient()
+        if (!ephemeral) {
+          toast("Supabase não configurado. Verifique .env e reinicie o servidor.", "erro")
           return false
         }
-        console.log("SubAdmin criado no Supabase com sucesso")
+
+        const { data: created, error: createError } = await ephemeral.auth.signUp({
+          email: String(payload.email || "").trim(),
+          password: senhaLimpa,
+          options: {
+            data: {
+              nome: payload.nome,
+              papel: "subadmin",
+              escola: payload.instituicaoId,
+              schoolId: payload.instituicaoId,
+              funcao: funcaoMetadataDePapelCadastro("subadmin"),
+            },
+          },
+        })
+
+        if (createError || !created?.user) {
+          toast("Erro ao criar SubAdmin: " + (createError?.message || "falha ao criar usuário"), "erro")
+          return false
+        }
+
+        const newUserId = created.user.id
+
+        // Registrar no admin_users para aparecer na gestão (sem trocar a sessão atual)
+        try {
+          await supabase.from("admin_users").insert({
+            id: newUserId,
+            full_name: payload.nome,
+            email: String(payload.email || "").trim(),
+            role: "subadmin",
+            institution_id: payload.instituicaoId || null,
+            account_type: payload.instituicaoId ? "institution" : "trial",
+            active: true,
+            licenses: 1,
+            license_type: payload.tipoLicenca || "Basic",
+          })
+        } catch (err) {
+          console.error("Erro ao registrar SubAdmin em admin_users:", err)
+        }
+
+        await refreshAdminData()
+        toast("SubAdmin criado com sucesso (sem alterar sua sessão).", "sucesso")
+        return true
       }
 
       const passwordHash = await hash(payload.senha, 10)
@@ -544,13 +592,35 @@ export function SpectrumProvider({ children }) {
       await refreshAdminData()
       return true
     },
-    [cadastroSupabase, refreshAdminData, toast],
+    [refreshAdminData, toast],
   )
 
   const criarUsuarioInstituicao = useCallback(async (payload) => {
-    await createUsuarioInstituicao(payload)
+    if (isSupabaseConfigured() && supabase) {
+      const senhaLimpa = payload.senha || ""
+      if (senhaLimpa.length < 6) {
+        toast("A senha deve ter no mínimo 6 caracteres (exigência do Supabase).", "erro")
+        return
+      }
+      const res = await cadastroSupabase({
+        nome: payload.nome,
+        email: payload.email,
+        senha: senhaLimpa,
+        papel: payload.papel || "usuario",
+        escola: payload.instituicaoId,
+        schoolId: payload.instituicaoId,
+        licencas: payload.licencas,
+        tipoLicenca: payload.tipoLicenca,
+      })
+      if (!res?.ok) return
+      await refreshAdminData()
+      return
+    }
+
+    const passwordHash = payload.senha ? await hash(payload.senha, 10) : null
+    await createUsuarioInstituicao({ ...payload, passwordHash })
     await refreshAdminData()
-  }, [refreshAdminData])
+  }, [cadastroSupabase, refreshAdminData, toast])
 
   const atualizarLicencasUsuario = useCallback(async (usuarioId, licencas) => {
     await atualizarLicenca(usuarioId, licencas)
