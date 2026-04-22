@@ -269,12 +269,25 @@ export function SpectrumProvider({ children }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured() || !supabase) return
+    
+    // Restaurar tipoLicenca da sessionStorage se existir
+    const restaurarUsuarioComLicenca = (usuarioBase) => {
+      const tipoLicencaSalvo = sessionStorage.getItem(`tipoLicenca_${usuarioBase.id}`)
+      if (tipoLicencaSalvo) {
+        return {
+          ...usuarioBase,
+          tipoLicenca: tipoLicencaSalvo,
+        }
+      }
+      return usuarioBase
+    }
+    
     supabase.auth.getSession().then(({ data }) => {
       const s = data.session
       if (!s?.user) return
       const meta = s.user.user_metadata || {}
       console.log("Metadata do usuário logado:", meta)
-      setUsuario({
+      const usuarioBase = {
         id: s.user.id,
         email: s.user.email,
         nome: meta.nome || s.user.email?.split("@")[0] || "Usuário",
@@ -282,7 +295,8 @@ export function SpectrumProvider({ children }) {
         perfilCodigo: perfilCodigoDeMetadata(meta),
         schoolId: meta.schoolId || null,
         iniciais: iniciaisDe(meta.nome || s.user.email || "NI"),
-      })
+      }
+      setUsuario(restaurarUsuarioComLicenca(usuarioBase))
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (!session?.user) {
@@ -291,7 +305,7 @@ export function SpectrumProvider({ children }) {
       }
       
       const meta = session.user.user_metadata || {}
-      setUsuario({
+      const usuarioBase = {
         id: session.user.id,
         email: session.user.email,
         nome: meta.nome || session.user.email?.split("@")[0] || "Usuário",
@@ -299,13 +313,17 @@ export function SpectrumProvider({ children }) {
         perfilCodigo: perfilCodigoDeMetadata(meta),
         schoolId: meta.schoolId || null,
         iniciais: iniciaisDe(meta.nome || session.user.email || "NI"),
-      })
+      }
+      setUsuario(restaurarUsuarioComLicenca(usuarioBase))
     })
     return () => sub.subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
     if (!usuario || !isSupabaseConfigured() || !supabase) return
+    
+    // Se tipoLicenca já existe, não precisa carregar
+    if (usuario.tipoLicenca) return
     
     let ativo = true
     
@@ -321,6 +339,8 @@ export function SpectrumProvider({ children }) {
         if (!ativo) return
         
         if (data) {
+          // Salvar na sessionStorage para recuperar se a aba for inativada
+          sessionStorage.setItem(`tipoLicenca_${usuario.id}`, data.license_type || "")
           setUsuario((prev) => ({
             ...prev,
             tipoLicenca: data.license_type,
@@ -427,10 +447,16 @@ export function SpectrumProvider({ children }) {
     if (isSupabaseConfigured() && supabase) {
       await supabase.auth.signOut()
     }
+    
+    // Limpar sessionStorage de tipoLicenca quando fazer logout
+    if (usuario?.id) {
+      sessionStorage.removeItem(`tipoLicenca_${usuario.id}`)
+    }
+    
     toastSyncJaExibido.current = false
     setUsuario(null)
     setActiveSection("dashboard")
-  }, [])
+  }, [usuario?.id])
 
   const cadastroSupabase = useCallback(
     async ({ nome, email, senha, papel, escola, schoolId, licencas, tipoLicenca }) => {

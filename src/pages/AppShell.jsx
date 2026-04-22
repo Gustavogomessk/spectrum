@@ -75,7 +75,7 @@ export default function AppShell() {
       const defaultSection = getDefaultSection(usuario)
       setActiveSection(defaultSection)
     }
-  }, [usuario, activeSection, setActiveSection])
+  }, [usuario?.id, usuario?.tipoLicenca, usuario?.perfilCodigo, activeSection, setActiveSection])
 
   function ir(secao) {
     setActiveSection(secao)
