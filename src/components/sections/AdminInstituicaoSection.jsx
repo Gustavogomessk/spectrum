@@ -146,7 +146,7 @@ export default function AdminInstituicaoSection({ active }) {
                   <strong>Tipo de Instituição:</strong> {tipoInstituicaoAtual}
                 </div>
                 <div style={{ marginBottom: "0.5rem" }}>
-                  <strong>Preço Base:</strong> {formatarMoeda(tipoInstituicaoAtual === "Enterprise" ? 100 : 50)}
+                  <strong>Preço Base:</strong> {formatarMoeda(instituicao?.plano === "Enterprise" ? 100 : 50)}
                 </div>
                 <div style={{ marginBottom: "0.75rem" }}>
                   <strong>Detalhes das Licenças:</strong>
