@@ -453,8 +453,8 @@ export function SpectrumProvider({ children }) {
             institution_id: schoolId || null,
             account_type: schoolId ? "institution" : "trial",
             active: true,
-            licenses: Number(licencas || 1),
-            license_type: tipoLicenca || "Basic",
+            licenses: Number(licencas || (papel === "subadmin" ? 0 : 1)),
+            license_type: tipoLicenca || (papel === "subadmin" ? "Sem Licença" : "Basic"),
           }).select().single()
         } catch (err) {
           console.error("Erro ao registrar usuário em admin_users:", err)
@@ -604,8 +604,8 @@ export function SpectrumProvider({ children }) {
             institution_id: payload.instituicaoId || null,
             account_type: payload.instituicaoId ? "institution" : "trial",
             active: true,
-            licenses: 1,
-            license_type: payload.tipoLicenca || "Basic",
+            licenses: 0,
+            license_type: "Sem Licença",
           })
         } catch (err) {
           console.error("Erro ao registrar SubAdmin em admin_users:", err)
@@ -617,7 +617,7 @@ export function SpectrumProvider({ children }) {
       }
 
       const passwordHash = await hash(payload.senha, 10)
-      await createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 1, passwordHash })
+      await createUsuarioInstituicao({ ...payload, papel: "subadmin", licencas: 0, passwordHash })
       await refreshAdminData()
       return true
     },

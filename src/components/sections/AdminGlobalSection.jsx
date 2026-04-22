@@ -80,7 +80,7 @@ export default function AdminGlobalSection({ active, activeSection }) {
     Personal: "Instituição embarca com recursos básicos para uso individual ou pequenas equipes.",
   }
 
-  const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria"]
+  const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria", "Sem Licença"]
 
   const formatPixAmount = (value) => {
     const amount = Number(value) || 0

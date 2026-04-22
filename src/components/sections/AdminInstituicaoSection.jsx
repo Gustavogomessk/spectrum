@@ -5,7 +5,7 @@ import { AlertCircle, Info, CheckCircle } from "lucide-react"
 import AppIcon from "../ui/AppIcon"
 import { calcularValorBoleto, gerarDetalhesBoleto, formatarMoeda } from "../../utils/pricing"
 
-const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria"]
+const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria", "Sem Licença"]
 const TIPOS_INSTITUICAO = ["Enterprise", "Pessoal"]
 
 export default function AdminInstituicaoSection({ active }) {
@@ -54,7 +54,6 @@ export default function AdminInstituicaoSection({ active }) {
   }
 
   const instituicaoId = usuario?.schoolId || "inst-1"
-
   const usuarios = useMemo(() => (adminData?.usuarios || []).filter((u) => u.instituicaoId === instituicaoId), [adminData, instituicaoId])
   const instituicao = useMemo(() => (adminData?.instituicoes || []).find((i) => i.id === instituicaoId), [adminData, instituicaoId])
   const tipoInstituicaoAtual = tipoInstituicaoEdit !== null ? tipoInstituicaoEdit : (instituicao?.tipoInstituicao || "Pessoal")
@@ -121,30 +120,9 @@ export default function AdminInstituicaoSection({ active }) {
           </div>
           <div className="card-corpo">
             <div className="linha-campos">
-              <select 
-                className="campo" 
-                value={tipoInstituicaoAtual} 
-                onChange={(e) => setTipoInstituicaoEdit(e.target.value)}
-              >
-                {TIPOS_INSTITUICAO.map((tipo) => (
-                  <option key={tipo} value={tipo}>
-                    {tipo}
-                  </option>
-                ))}
-              </select>
+              <spam class="campo">{tipoInstituicaoAtual}</spam>
             </div>
-            <button
-              type="button"
-              className="btn btn-secundario"
-              onClick={async () => {
-                if (tipoInstituicaoEdit === null) return toast("Nenhuma mudança.", "info")
-                await editarInstituicao(instituicaoId, { tipoInstituicao: tipoInstituicaoAtual })
-                setTipoInstituicaoEdit(null)
-                toast("Tipo de instituição atualizado.", "sucesso")
-              }}
-            >
-              Atualizar tipo
-            </button>
+           
           </div>
         </div>
 
@@ -158,7 +136,7 @@ export default function AdminInstituicaoSection({ active }) {
               className="btn btn-primario"
               onClick={() => setMostrarCalculoBoleto(!mostrarCalculoBoleto)}
             >
-              {mostrarCalculoBoleto ? "Ocultar cálculo" : "Visualizar cálculo e emitir"}
+              {mostrarCalculoBoleto ? "Ocultar cálculo" : "Visualizar cálculo "}
             </button>
 
             {mostrarCalculoBoleto && (
@@ -212,22 +190,6 @@ export default function AdminInstituicaoSection({ active }) {
                     Valor Total: {formatarMoeda(calcularValorBoleto(tipoInstituicaoAtual, usuarios))}
                   </strong>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-sucesso"
-                  onClick={async () => {
-                    const valor = calcularValorBoleto(tipoInstituicaoAtual, usuarios)
-                    const referencia = `INST-${instituicaoId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}`
-                    await criarPagamentoSubadmin({
-                      referencia,
-                      valor,
-                    })
-                    setMostrarCalculoBoleto(false)
-                    toast("Boleto emitido com sucesso!", "sucesso")
-                  }}
-                >
-                  Emitir Boleto
-                </button>
               </div>
             )}
           </div>

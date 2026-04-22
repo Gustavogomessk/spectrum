@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { useSpectrum } from "../../context/SpectrumContext"
 import { Edit2, Trash2, Plus, X } from "lucide-react"
 import AppIcon from "../ui/AppIcon"
 
 const USUARIO_PAPEIS = ["professor", "psicopedagogo", "secretaria", "subadmin"]
-const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria"]
+const USUARIO_LICENCAS = ["PRO", "Basic", "Secretaria", "Sem Licença"]
 
 export default function AdminSubadminUsersSection({ active }) {
   const {
@@ -23,10 +23,43 @@ export default function AdminSubadminUsersSection({ active }) {
 
   const instituicaoId = usuario?.schoolId || "inst-1"
 
+  const instituicao = useMemo(() => (adminData?.instituicoes || []).find((i) => i.id === instituicaoId), [adminData, instituicaoId])
+
   const usuarios = useMemo(
     () => (adminData?.usuarios || []).filter((u) => u.instituicaoId === instituicaoId),
     [adminData, instituicaoId]
   )
+
+  const allowedLicencas = useMemo(() => {
+    // Instituições Pessoais não oferecem a licença PRO
+    if (!instituicao) return USUARIO_LICENCAS
+    return instituicao.tipoInstituicao === "Enterprise" ? USUARIO_LICENCAS : USUARIO_LICENCAS.filter((l) => l !== "PRO")
+  }, [instituicao])
+
+  // Garantir que o estado do novo usuário tenha um tipo de licença coerente
+  useEffect(() => {
+    if (!allowedLicencas || allowedLicencas.length === 0) return
+    setNovo((s) => ({ ...s, tipoLicenca: allowedLicencas.includes(s.tipoLicenca) ? s.tipoLicenca : allowedLicencas[0] }))
+  }, [allowedLicencas])
+
+  // Se estiver editando um usuário, garantir que o tipo de licença no modal seja coerente
+  const _prevEditId = useRef(null)
+
+  useEffect(() => {
+    if (!usuarioEdit || !allowedLicencas) return
+    // Only coerce when opening the modal for a different user (avoid overwriting user edits)
+    if (_prevEditId.current !== usuarioEdit.id) {
+      _prevEditId.current = usuarioEdit.id
+      if (!allowedLicencas.includes(usuarioEdit.tipoLicenca)) {
+        setUsuarioEdit((u) => ({ ...u, tipoLicenca: USUARIO_LICENCAS[0] }))
+      }
+    }
+  }, [usuarioEdit, allowedLicencas])
+
+  // Reset prev id when modal closed
+  useEffect(() => {
+    if (!usuarioEdit) _prevEditId.current = null
+  }, [usuarioEdit])
 
   async function handleCriarUsuario() {
     if (!novo.nome || !novo.email || !novo.senha) {
@@ -332,7 +365,7 @@ export default function AdminSubadminUsersSection({ active }) {
               </label>
               <select
                 className="campo"
-                value={usuarioEdit.tipoLicenca || "Basic"}
+                value={usuarioEdit.tipoLicenca}
                 onChange={(e) => setUsuarioEdit((u) => ({ ...u, tipoLicenca: e.target.value }))}
               >
                 {USUARIO_LICENCAS.map((lic) => (

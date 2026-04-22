@@ -76,6 +76,7 @@ export function funcaoMetadataDePapelCadastro(papel) {
 export function canAccessDashboard(usuario) {
   // Dashboard: PRO, Basic e Educadores
   if (isAdmin(usuario)) return true
+  if (usuario?.tipoLicenca === "Sem Licença") return false
   if (isSecretaria(usuario)) return false
   return true
 }
@@ -83,6 +84,7 @@ export function canAccessDashboard(usuario) {
 export function canAccessAdaptar(usuario) {
   // Adaptar Material: apenas PRO
   if (isSecretaria(usuario)) return false
+  if (usuario?.tipoLicenca === "Sem Licença") return false
   const licenca = usuario?.tipoLicenca || "Basic"
   return licenca === "PRO"
 }
@@ -90,6 +92,7 @@ export function canAccessAdaptar(usuario) {
 export function canAccessChatbot(usuario) {
   // Chatbot: apenas PRO
   if (isSecretaria(usuario)) return false
+  if (usuario?.tipoLicenca === "Sem Licença") return false
   const licenca = usuario?.tipoLicenca || "Basic"
   return licenca === "PRO"
 }
@@ -97,11 +100,13 @@ export function canAccessChatbot(usuario) {
 export function canAccessHistorico(usuario) {
   // Histórico: PRO e Basic
   if (isSecretaria(usuario)) return false
+  if (usuario?.tipoLicenca === "Sem Licença") return false
   return true
 }
 
 export function canAccessAlunos(usuario) {
   // Alunos: todos (Secretaria, Basic, PRO) mais educadores
+  if (usuario?.tipoLicenca === "Sem Licença") return false
   return true
 }
 
@@ -110,6 +115,12 @@ export function canAccessSection(usuario, sectionId) {
   if (isAdminMaster(usuario) || isAdminInstituicao(usuario)) {
     const adminSections = new Set(["dashboard", "admin-global", "admin-notificacoes", "admin-instituicao", "admin-usuarios", "perfil"])
     return adminSections.has(sectionId)
+  }
+
+  // Se usuário está sem licença, bloquear acesso a principais seções de uso
+  if (usuario?.tipoLicenca === "Sem Licença") {
+    const blocked = new Set(["dashboard", "adaptar", "historico", "alunos"])
+    if (blocked.has(sectionId)) return false
   }
 
   // Seções por tipo de usuário
@@ -140,6 +151,9 @@ export function getAccessibleSections(usuario) {
       sections.push("admin-global", "admin-notificacoes")
     }
   } else {
+    // Se usuário sem licença, não adicionar seções principais
+    if (usuario?.tipoLicenca === "Sem Licença") return sections
+
     if (canAccessDashboard(usuario)) sections.push("dashboard")
     if (canAccessAdaptar(usuario)) sections.push("adaptar")
     if (canAccessHistorico(usuario)) sections.push("historico")
@@ -156,6 +170,7 @@ export function getDefaultSection(usuario) {
   if (isSecretaria(usuario)) return "alunos"
   
   const licenca = usuario?.tipoLicenca || "Basic"
+  if (licenca === "Sem Licença") return "perfil"
   if (licenca === "PRO") return "dashboard"
   if (licenca === "Basic") return "dashboard"
   

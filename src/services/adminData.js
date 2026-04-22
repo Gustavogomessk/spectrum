@@ -38,7 +38,7 @@ function toUsuario(row) {
     email: row.email || "",
     papel: row.role || "usuario",
     licencas: row.licenses ?? 1,
-    tipoLicenca: row.license_type || "Basic",
+    tipoLicenca: row.role === "subadmin" ? (row.license_type || "Sem Licença") : (row.license_type || "Basic"),
     ativo: row.active !== false,
     contaPessoal: !row.institution_id,
     trial: row.account_type === "trial",
@@ -150,8 +150,19 @@ export async function createInstituicao(payload) {
     institution_type: payload.tipoInstituicao || "Pessoal",
     active: true,
   }
+  // Tentar inserir incluindo institution_type; se a coluna não existir, tentar sem ela
   const { data, error } = await supabase.from("admin_institutions").insert(insert).select().single()
-  if (error) throw error
+  if (error) {
+    const msg = String(error?.message || "")
+    if (msg.includes("Could not find the 'institution_type'")) {
+      const insertNoType = { ...insert }
+      delete insertNoType.institution_type
+      const { data: data2, error: error2 } = await supabase.from("admin_institutions").insert(insertNoType).select().single()
+      if (error2) throw error2
+      return toInstituicao(data2)
+    }
+    throw error
+  }
   return toInstituicao(data)
 }
 
@@ -164,7 +175,8 @@ export async function createUsuarioInstituicao(payload) {
     password_hash: payload.passwordHash || null,
     role: payload.papel || "usuario",
     licenses: Number(payload.licencas || 1),
-    license_type: payload.tipoLicenca || "Basic",
+    // If creating a subadmin, default to 'Sem Licença' and 0 licenses unless explicitly set
+    license_type: payload.tipoLicenca || (payload.papel === "subadmin" ? "Sem Licença" : "Basic"),
     account_type: payload.accountType || (payload.instituicaoId ? "institution" : "trial"),
     active: true,
   }
@@ -217,15 +229,31 @@ export async function atualizarInstituicao(instituicaoId, updates) {
   if (updates.plano) updatePayload.plan = updates.plano
   if (updates.cnpj) updatePayload.document = updates.cnpj
   if (updates.limiteUsuarios !== undefined) updatePayload.user_limit = Number(updates.limiteUsuarios)
-  
-  const { data, error } = await supabase
-    .from("admin_institutions")
-    .update(updatePayload)
-    .eq("id", instituicaoId)
-    .select()
-    .single()
-  if (error) throw error
-  return toInstituicao(data)
+  try {
+    const { data, error } = await supabase
+      .from("admin_institutions")
+      .update(updatePayload)
+      .eq("id", instituicaoId)
+      .select()
+      .single()
+    if (error) throw error
+    return toInstituicao(data)
+  } catch (err) {
+    const msg = String(err?.message || err)
+    if (msg.includes("Could not find the 'institution_type'")) {
+      const payloadNoType = { ...updatePayload }
+      delete payloadNoType.institution_type
+      const { data: data2, error: error2 } = await supabase
+        .from("admin_institutions")
+        .update(payloadNoType)
+        .eq("id", instituicaoId)
+        .select()
+        .single()
+      if (error2) throw error2
+      return toInstituicao(data2)
+    }
+    throw err
+  }
 }
 
 export async function desabilitarInstituicao(instituicaoId) {
