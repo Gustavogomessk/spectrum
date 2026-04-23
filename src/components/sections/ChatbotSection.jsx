@@ -162,15 +162,7 @@ export default function ChatbotSection({ active }) {
         if (isSupabaseConfigured()) {
           if (!convId) {
             try {
-              const novaConversa = await createChatConversation(usuario.id, "Chat Educacional", usuario.schoolId)
-              if (novaConversa?.id) {
-                convId = novaConversa.id
-                sessionStorage.setItem(`chat-conversation-${usuario.id}`, convId)
-              }
-            } catch (err) {
-              console.error("Erro ao criar conversa:", err)
-              // Continuar mesmo se falhar
-            }
+              const novaConversa = await createChatConversation(usuario.id, "Chat Educacional", null)
           }
           
           // Carregar mensagens anteriores se temos convId
@@ -243,7 +235,7 @@ export default function ChatbotSection({ active }) {
     // Salvar mensagem do usuário
     if (isSupabaseConfigured() && conversationId && usuario?.id) {
       try {
-        await saveChatMessage(conversationId, usuario.id, "user", msg, usuario.schoolId)
+        await saveChatMessage(conversationId, usuario.id, "user", msg, null)
       } catch (err) {
         console.error("Erro ao salvar mensagem do usuário:", err)
       }
@@ -379,7 +371,7 @@ Responda **APENAS** com o material adaptado, seguindo todas as regras acima.`
       // Salvar resposta da IA
       if (isSupabaseConfigured() && conversationId && usuario?.id) {
         try {
-          await saveChatMessage(conversationId, usuario.id, "assistant", respostaTexto, usuario.schoolId)
+          await saveChatMessage(conversationId, usuario.id, "assistant", respostaTexto, null)
         } catch (err) {
           console.error("Erro ao salvar resposta da IA:", err)
         }
@@ -397,7 +389,7 @@ Responda **APENAS** com o material adaptado, seguindo todas as regras acima.`
       // Salvar fallback
       if (isSupabaseConfigured() && conversationId && usuario?.id) {
         try {
-          await saveChatMessage(conversationId, usuario.id, "assistant", fallback, usuario.schoolId)
+          await saveChatMessage(conversationId, usuario.id, "assistant", fallback, null)
         } catch (err) {
           console.error("Erro ao salvar fallback:", err)
         }
