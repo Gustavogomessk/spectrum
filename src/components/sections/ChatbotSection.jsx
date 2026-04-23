@@ -253,7 +253,7 @@ export default function ChatbotSection({ active }) {
 Ajude professores e psicopedagogos com estratégias pedagógicas, adaptações de material e dicas práticas.
 Seja objetivo, empático e prático. Use listas e formatação clara. Responda em português do Brasil.
 Mencione que o Spectrum pode automatizar adaptações quando relevante.
-
+Seja sempre obejtivo com respostar curtas e diretas, usando formatação para facilitar a leitura. Nunca explique o processo, apenas responda à pergunta do educador com a melhor resposta possível.
 `
 
       const resposta = await chatCohere({
@@ -342,10 +342,10 @@ Mencione que o Spectrum pode automatizar adaptações quando relevante.
 
               {mensagens.map((m) => (
                 <div key={m.id} className={`mensagem ${m.papel === "ia" ? "ia" : "usuario"}`} role="article" aria-label={m.papel === "ia" ? "Mensagem da IA" : "Sua mensagem"}>
-                  <div className={`mensagem-avatar ${m.papel === "ia" ? "ia" : "usr"}`} aria-hidden="true">
+                  <div className={`mensagem-avatar ${m.papel === "ia" ? "ia" : "usr"}`}  aria-hidden="true">
                     {m.papel === "ia" ? "IA" : usuario?.iniciais || "EU"}
                   </div>
-                  <div className="mensagem-balao" dangerouslySetInnerHTML={{ __html: formatarMensagemChat(m.texto) }} />
+                  <div className="mensagem-balao" style={m.papel === "ia" ? {paddingLeft: 50} : {}} dangerouslySetInnerHTML={{ __html: formatarMensagemChat(m.texto) }} />
                 </div>
               ))}
             </>
