@@ -28,19 +28,19 @@ Diagrama do ecossistema
 
 ```mermaid
 ```mermaid
-flowchart LR
+graph LR
   subgraph Frontend
-    A["Browser / SPA\nindex.html\nmain.jsx\nsrc/"] -->|API calls| B["API Routes (serverless)"]
+    A[Browser / SPA<br/>index.html<br/>main.jsx<br/>src/] -->|API calls| B[API Routes (serverless)]
   end
 
   subgraph Backend
-    B --> C["Auth & Business Logic\napi/_lib\napi/auth.js"]
-    C --> D["Supabase (DB & Storage)"]
-    C --> E["Payments / Webhooks"]
+    B --> C[Auth & Business Logic<br/>api/_lib<br/>api/auth.js]
+    C --> D[Supabase (DB & Storage)]
+    C --> E[Payments / Webhooks]
   end
 
   subgraph Storage
-    D --> F["Files & Materials"]
+    D --> F[Files & Materials]
   end
 
   style Frontend fill:#f9f,stroke:#333,stroke-width:1px
