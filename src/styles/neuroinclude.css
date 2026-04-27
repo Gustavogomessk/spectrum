@@ -101,10 +101,17 @@
     border-radius: 50%; background: rgba(255,255,255,0.06);
   }
   .login-logo {
-    font-family: var(--fonte-titulo); font-size: 2.2rem; font-weight: 800;
-    letter-spacing: -0.5px; margin-bottom: 0.25rem; position: relative; z-index: 1;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
   }
-  .login-logo span { opacity: 0.7; }
+  .login-logo-image {
+    width: 88px;
+    height: 88px;
+    object-fit: cover;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(26,35,64,0.22);
+  }
   .login-tagline {
     font-size: 1.05rem; opacity: 0.9; max-width: 320px;
     line-height: 1.6; margin-bottom: 2.5rem; position: relative; z-index: 1;
@@ -216,15 +223,19 @@
     transition: transform var(--transicao);
   }
   .sidebar-logo {
-    padding: 1.25rem 1.5rem;
-    font-family: var(--fonte-titulo); font-size: 1.4rem; font-weight: 800;
-    color: var(--cor-primaria); border-bottom: 1px solid var(--cor-borda);
-    display: flex; align-items: center; gap: 0.5rem;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--cor-borda);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .logo-icon {
-    width: 32px; height: 32px; background: var(--cor-primaria);
-    border-radius: var(--raio-sm); display: flex; align-items: center;
-    justify-content: center; font-size: 16px;
+  .sidebar-logo-image {
+    width: 54px;
+    height: 54px;
+    object-fit: cover;
+    border-radius: 14px;
+    flex-shrink: 0;
+    box-shadow: 0 6px 18px rgba(26,35,64,0.14);
   }
   .sidebar-nav { flex: 1; padding: 1rem 0.75rem; overflow-y: auto; }
   .nav-secao {

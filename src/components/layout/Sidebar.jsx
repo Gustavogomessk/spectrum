@@ -1,7 +1,8 @@
 import { useSpectrum } from "../../context/SpectrumContext"
 import { isAdminInstituicao, isAdminMaster, isEducador, isSecretaria, canAccessSection } from "../../utils/perfil"
 import AppIcon from "../ui/AppIcon"
-import { Bell, Bot, Building2, FileText, Gauge, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, Lock } from "lucide-react"
+import { Bell, Building2, FileText, Gauge, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, Lock } from "lucide-react"
+import projectLogo from "../../../Images/A_Logo.png"
 
 export default function Sidebar({ aberta, onNavigate, onPerfil }) {
   const { usuario, activeSection, notificacoesSubadmin } = useSpectrum()
@@ -47,10 +48,7 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
   return (
     <nav className={`sidebar ${aberta ? "aberta" : ""}`} id="sidebar" role="navigation" aria-label="Menu principal">
       <div className="sidebar-logo" aria-label="Spectrum logo">
-        <div className="logo-icon" aria-hidden="true">
-          <AppIcon icon={Bot} size={20} />
-        </div>
-        Spectrum
+        <img src={projectLogo} alt="Logo do Spectrum" className="sidebar-logo-image" />
       </div>
 
       <div className="sidebar-nav">

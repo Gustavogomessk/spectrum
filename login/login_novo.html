@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spectrum</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<style>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --blue: #3A86FF;
+    --purple: #8338EC;
+    --teal: #2EC4B6;
+    --yellow: #FFBE0B;
+    --white: #ffffff;
+    --bg: #f0f4ff;
+    --text: #1a1a2e;
+    --muted: #7b82a0;
+    --input-bg: #eef1fb;
+    --dur: 680ms;
+    --ease: cubic-bezier(0.76, 0, 0.24, 1);
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 10% 20%, rgba(58, 134, 255, 0.10) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 90% 80%, rgba(131, 56, 236, 0.09) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── WRAPPER ── */
+  .auth-wrapper {
+    position: relative;
+    width: min(960px, 97vw);
+    height: min(590px, 95vh);
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow:
+      0 40px 100px rgba(58, 134, 255, 0.15),
+      0 8px 32px rgba(131, 56, 236, 0.10);
+    display: flex;
+  }
+
+  /* ── PANELS ── */
+  .panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    transition: transform var(--dur) var(--ease);
+    will-change: transform;
+  }
+
+  /* FORM PANEL */
+  .form-panel {
+    background: var(--white);
+    left: 0;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .auth-wrapper.to-register .form-panel {
+    transform: translateX(100%);
+  }
+
+  /* CARD PANEL */
+  .card-panel {
+    right: 0;
+    z-index: 3;
+    background: linear-gradient(145deg, var(--blue) 0%, var(--purple) 100%);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .auth-wrapper.to-register .card-panel {
+    transform: translateX(-100%);
+  }
+
+  /* blobs */
+  .blob1,
+  .blob2,
+  .blob3 {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .blob1 {
+    width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.07);
+    top: -80px;
+    right: -80px;
+  }
+
+  .blob2 {
+    width: 180px;
+    height: 180px;
+    background: rgba(46, 196, 182, 0.18);
+    bottom: -50px;
+    left: -40px;
+  }
+
+  .blob3 {
+    width: 90px;
+    height: 90px;
+    background: rgba(255, 190, 11, 0.22);
+    top: 50%;
+    left: 18%;
+    transform: translateY(-50%);
+  }
+
+  /* ── CARD CONTENT ── */
+  .card-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 40px;
+    text-align: center;
+    z-index: 2;
+    transition: opacity 0.32s var(--ease), transform 0.32s var(--ease);
+  }
+
+  .card-content.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(14px);
+  }
+
+  .card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 24px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 0.5px;
+    margin-bottom: 26px;
+  }
+
+  .card-badge .dot-b {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--yellow);
+    flex-shrink: 0;
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--white);
+    line-height: 1.15;
+    margin-bottom: 14px;
+  }
+
+  .card-title span {
+    color: var(--yellow);
+  }
+
+  .card-desc {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.60);
+    line-height: 1.75;
+    max-width: 210px;
+    margin-bottom: 36px;
+  }
+
+  .btn-card {
+    background: var(--white);
+    color: var(--blue);
+    border: none;
+    padding: 13px 36px;
+    border-radius: 50px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.12s, box-shadow 0.2s, color 0.2s;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .btn-card:hover {
+    background: var(--yellow);
+    color: #1a1a2e;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(255, 190, 11, 0.35);
+  }
+
+  .btn-card:active {
+    transform: scale(0.97);
+  }
+
+  /* dots */
+  .card-dots {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 7px;
+    z-index: 3;
+  }
+
+  .cdot {
+    height: 6px;
+    width: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.28);
+    transition: width 0.35s var(--ease), background 0.35s;
+  }
+
+  .cdot.on {
+    width: 22px;
+    background: var(--yellow);
+  }
+
+  /* ── FORMS ── */
+  .form-login,
+  .form-register {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 44px 52px;
+    transition: opacity 0.32s var(--ease), transform 0.32s var(--ease);
+  }
+
+  .form-register {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(16px);
+  }
+
+  .auth-wrapper.to-register .form-login {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-16px);
+  }
+
+  .auth-wrapper.to-register .form-register {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+  }
+
+  /* logo */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .logo-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-mark svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* form typography */
+  .form-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+
+  .form-sub {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  /* fields */
+  .field {
+    margin-bottom: 14px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .field input {
+    width: 100%;
+    height: 46px;
+    background: var(--input-bg);
+    border: 1.5px solid transparent;
+    border-radius: 12px;
+    padding: 0 16px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.22s, background 0.22s, box-shadow 0.22s;
+  }
+
+  .field input:focus {
+    border-color: var(--teal);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.15);
+  }
+
+  .field input::placeholder {
+    color: #b0b6cc;
+    font-size: 13px;
+  }
+
+  /* buttons */
+  .btn-primary {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--purple) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: transform 0.14s, box-shadow 0.22s, filter 0.22s;
+    box-shadow: 0 6px 24px rgba(58, 134, 255, 0.30);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 32px rgba(131, 56, 236, 0.35);
+    filter: brightness(1.07);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+
+  /* switch hint */
+  .switch-hint {
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 18px;
+  }
+
+  .switch-hint button {
+    background: none;
+    border: none;
+    color: var(--blue);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: rgba(58, 134, 255, 0.4);
+    transition: color 0.2s;
+  }
+
+  .switch-hint button:hover {
+    color: var(--purple);
+  }
+
+  /* accent bar */
+  .accent-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--blue), var(--teal), var(--yellow));
+  }
+</style>
+
+<body>
+
+  <div class="auth-wrapper" id="authWrapper">
+
+    <!-- FORM PANEL -->
+    <div class="panel form-panel">
+      <div class="accent-bar"></div>
+
+      <!-- Login -->
+      <div class="form-login">
+        <div class="logo">
+          <div class="logo-mark">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 3L3 7.5V12C3 16.14 7.02 20.11 12 21C16.98 20.11 21 16.14 21 12V7.5L12 3Z" fill="white"
+                fill-opacity="0.95" />
+              <path d="M9 12l2 2 4-4" stroke="#3A86FF" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </div>
+          <span class="logo-text">Spectrum</span>
+        </div>
+
+        <div class="form-heading">Bem-vindo de volta</div>
+        <p class="form-sub">Acesse com suas credenciais institucionais</p>
+
+        <div class="field">
+          <label>E-mail Institucional!!</label>
+          <input type="email" placeholder="nome@instituicao.edu.br" />
+        </div>
+        <div class="field">
+          <label>Senha</label>
+          <input type="password" placeholder="••••••••" />
+        </div>
+
+        <button class="btn-primary">Entrar na plataforma</button>
+
+        <p class="switch-hint">
+          Não tem conta?&nbsp;
+          <button onclick="switchTo('register')">Cadastre-se aqui</button>
+        </p>
+      </div>
+
+      <!-- Cadastro -->
+      <div class="form-register">
+        <div class="logo">
+          <div class="logo-mark">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 3L3 7.5V12C3 16.14 7.02 20.11 12 21C16.98 20.11 21 16.14 21 12V7.5L12 3Z" fill="white"
+                fill-opacity="0.95" />
+              <path d="M9 12l2 2 4-4" stroke="#3A86FF" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </div>
+          <span class="logo-text">Spectrum</span>
+        </div>
+
+        <div class="form-heading">Criar sua conta</div>
+        <p class="form-sub">Preencha os dados para seu cadastro docente</p>
+
+        <div class="field">
+          <label>Nome Completo</label>
+          <input type="text" placeholder="Dr. Ana Paula Souza" />
+        </div>
+        <div class="field">
+          <label>E-mail Institucional</label>
+          <input type="email" placeholder="nome@instituicao.edu.br" />
+        </div>
+        <div class="field">
+          <label>Senha</label>
+          <input type="password" placeholder="Mínimo 8 caracteres" />
+        </div>
+
+        <button class="btn-primary">Criar minha conta</button>
+
+        <p class="switch-hint">
+          Já tem conta?&nbsp;
+          <button onclick="switchTo('login')">Fazer login</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD PANEL -->
+    <div class="panel card-panel">
+      <div class="blob1"></div>
+      <div class="blob2"></div>
+      <div class="blob3"></div>
+
+      <!-- Card login -->
+      <div class="card-content" id="cardLogin">
+        <div class="card-badge">
+          <span class="dot-b"></span>
+          Portal Institucional
+        </div>
+        <div class="card-title">Seja<br /><span>Bem-vindo!</span></div>
+        <p class="card-desc">Acesse o portal com seu e-mail e senha institucionais para continuar sua jornada.</p>
+        <button class="btn-card" onclick="switchTo('register')">Não tenho conta</button>
+      </div>
+
+      <!-- Card cadastro -->
+      <div class="card-content hidden" id="cardRegister">
+        <div class="card-badge">
+          <span class="dot-b"></span>
+          Novo Docente
+        </div>
+        <div class="card-title">Junte-se<br /><span>a nós!</span></div>
+        <p class="card-desc">Crie sua conta e tenha acesso completo a todos os recursos do portal docente.</p>
+        <button class="btn-card" onclick="switchTo('login')">Ja tenho conta</button>
+      </div>
+
+      <div class="card-dots">
+        <div class="cdot on" id="cdot0"></div>
+        <div class="cdot" id="cdot1"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+
+    const wrapper = document.getElementById('authWrapper');
+    const cLogin = document.getElementById('cardLogin');
+    const cRegister = document.getElementById('cardRegister');
+    const cdot0 = document.getElementById('cdot0');
+    const cdot1 = document.getElementById('cdot1');
+
+    let current = 'login';
+    let locked = false;
+
+    function switchTo(mode) {
+      if (mode === current || locked) return;
+      locked = true;
+      current = mode;
+
+      if (mode === 'register') {
+        wrapper.classList.add('to-register');
+        cdot0.classList.remove('on');
+        cdot1.classList.add('on');
+        setTimeout(() => {
+          cLogin.classList.add('hidden');
+          cRegister.classList.remove('hidden');
+          locked = false;
+        }, 300);
+      } else {
+        wrapper.classList.remove('to-register');
+        cdot1.classList.remove('on');
+        cdot0.classList.add('on');
+        setTimeout(() => {
+          cRegister.classList.add('hidden');
+          cLogin.classList.remove('hidden');
+          locked = false;
+        }, 300);
+      }
+    }
+
+  </script>
+</body>
+
+</html>
