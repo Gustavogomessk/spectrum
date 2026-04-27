@@ -57,6 +57,13 @@ export default function AdminInstituicaoSection({ active }) {
   const usuarios = useMemo(() => (adminData?.usuarios || []).filter((u) => u.instituicaoId === instituicaoId), [adminData, instituicaoId])
   const instituicao = useMemo(() => (adminData?.instituicoes || []).find((i) => i.id === instituicaoId), [adminData, instituicaoId])
   const tipoInstituicaoAtual = tipoInstituicaoEdit !== null ? tipoInstituicaoEdit : (instituicao?.tipoInstituicao || "Pessoal")
+  
+  // Combinar subadmin com outros usuários para exibir na tabela de gestão de licenças
+  const usuariosComSubadmin = useMemo(() => {
+    const subadminUser = usuario ? { ...usuario, papel: "subadmin" } : null
+    const outrosUsuarios = usuarios || []
+    return subadminUser ? [subadminUser, ...outrosUsuarios] : outrosUsuarios
+  }, [usuario, usuarios])
   const pagamentoAtual = pagamentosSubadmin[0] || null
   const qrMock = `MOCK-PIX|subadmin:${usuario?.id || "anon"}|instituicao:${instituicaoId}|${new Date().toISOString().slice(0, 10)}`
   const qrValue = pagamentoAtual?.qrCodePayload || qrMock
@@ -159,14 +166,14 @@ export default function AdminInstituicaoSection({ active }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {usuarios.length === 0 ? (
+                      {usuariosComSubadmin.length === 0 ? (
                         <tr>
                           <td colSpan={3} style={{ padding: "0.5rem", textAlign: "center", color: "var(--cor-texto-secundario)" }}>
                             Nenhum usuário cadastrado
                           </td>
                         </tr>
                       ) : (
-                        usuarios.map((u) => {
+                        usuariosComSubadmin.map((u) => {
                           const tipoLic = u.tipoLicenca || "Basic"
                           const precoAdicional = {
                             PRO: 30,
@@ -187,7 +194,7 @@ export default function AdminInstituicaoSection({ active }) {
                 </div>
                 <div style={{ marginBottom: "1rem", paddingTop: "0.75rem", borderTop: "2px solid var(--cor-borda)" }}>
                   <strong style={{ fontSize: "1.1rem" }}>
-                    Valor Total: {formatarMoeda(calcularValorBoleto(instituicao?.plano, usuarios))}
+                    Valor Total: {formatarMoeda(calcularValorBoleto(instituicao?.plano, usuariosComSubadmin))}
                   </strong>
                 </div>
               </div>
@@ -210,7 +217,7 @@ export default function AdminInstituicaoSection({ active }) {
                 </tr>
               </thead>
               <tbody>
-                {usuarios.map((u) => (
+                {usuariosComSubadmin.map((u) => (
                   <tr key={u.id}>
                     <td>{u.nome}</td>
                     <td>{u.email}</td>

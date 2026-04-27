@@ -22,17 +22,19 @@ const LICENSE_ADDITIONAL_PRICES = {
  * @returns {number} Valor total do boleto
  */
 export function calcularValorBoleto(institutionType, usuarios = []) {
-  // Preço base da instituição
-  const basePrice = INSTITUTION_BASE_PRICES[institutionType] 
+  // Preço base da instituição (padrão: Pessoal se não encontrado)
+  const basePrice = INSTITUTION_BASE_PRICES[institutionType] || INSTITUTION_BASE_PRICES["Pessoal"] || 50.0
 
   // Soma dos custos adicionais por licença
   const licensesCost = (usuarios || []).reduce((total, usuario) => {
-    const licenseType = usuario.tipoLicenca || "Basic"
+    const licenseType = usuario.tipoLicenca
     const additionalPrice = LICENSE_ADDITIONAL_PRICES[licenseType] || 0
     return total + additionalPrice
   }, 0)
 
   return basePrice + licensesCost
+  
+  
 }
 
 /**
@@ -42,7 +44,7 @@ export function calcularValorBoleto(institutionType, usuarios = []) {
  * @returns {object} Objeto com detalhes do cálculo
  */
 export function gerarDetalhesBoleto(institutionType, usuarios = []) {
-  const basePrice = INSTITUTION_BASE_PRICES[institutionType] 
+  const basePrice = INSTITUTION_BASE_PRICES[institutionType] || INSTITUTION_BASE_PRICES["Pessoal"] || 50.0
 
   const licenseBreakdown = (usuarios || []).map((usuario) => {
     const licenseType = usuario.tipoLicenca || "Basic"

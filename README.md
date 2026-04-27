@@ -1,87 +1,194 @@
-# Spectrum — Ferramenta de Adaptação e Automação
+# Spectrum — Plataforma de Adaptação de Materiais com Inteligência Artificial
 
-Este repositório reúne uma solução dupla: uma camada de automação responsável por processar dados e integrar serviços em fluxos automatizados, e uma aplicação leve que serve como interface de desenvolvimento e protótipo navegável.
+Este projeto apresenta uma plataforma educacional focada na adaptação automatizada de materiais didáticos para alunos neurodivergentes, utilizando inteligência artificial para reduzir o tempo de adaptação de horas para segundos.
 
-Sumário
-- Visão geral
-- Solução de automação
-- Solução de desenvolvimento
-- Diagrama do ecossistema (Mermaid)
-- Memorial de construção
-- Navegação rápida pelo repositório
+---
 
-**Visão geral**
+## Visão Geral
 
-O projeto tem dois focos complementares:
+A solução é composta por dois pilares principais:
 
-- Solução de automação: componentes no diretório `api/` que processam dados, geram URLs assinadas, integram com serviços externos (Supabase, provedores de pagamento, etc.) e automatizam fluxos de trabalho relacionados ao manejo de arquivos, usuários e pagamentos.
-- Solução de desenvolvimento: uma aplicação frontend leve (arquivos em `src/`, `index.html`, `main.jsx`) que fornece uma interface navegável, protótipos de componentes e páginas para interação, visualização e testes de usabilidade.
+- **Solução de automação:** responsável por processar dados, integrar serviços e executar fluxos automatizados (IA, arquivos, usuários, pagamentos).
+- **Solução de desenvolvimento:** aplicação web com interface navegável para interação com o sistema.
 
-Principais funcionalidades
+---
 
-- Geração de URLs assinadas para upload/download de arquivos
-- Endpoints para gerenciamento de usuários e instituições
-- Integração com Supabase (cliente e Admin)
-- UI responsiva com componentes reutilizáveis em `src/components`
+## Ecossistema da Solução
 
-Diagrama do ecossistema
+- Interface Web (Frontend)
+- API e lógica de negócio (Backend)
+- Banco de dados (Supabase)
+- Armazenamento de arquivos (Supabase Storage)
+- Integração com Inteligência Artificial
+- Sistema de autenticação e controle de acesso
+- Sistema de gestão de usuários e licenças
 
-```mermaid
+---
+
+## Perfis de Usuário
+
+### Admin Global
+- Gerencia licenças (Basic, PRO, Secretaria, Sem licença)
+- Gestão de usuários
+- Gestão de boletos
+
+### Administrador da Escola
+- Cadastro de usuários
+- Definição de papéis (Professor, Psicopedagogo, Secretaria)
+- Gerenciamento de permissões
+- Controle de licenças
+
+### Secretaria
+- Cadastro de alunos
+- Upload de laudos médicos (PDF)
+- Associação do laudo ao aluno
+- Sem acesso à IA
+
+### Professor e Psicopedagogo
+- Upload de materiais didáticos
+- Uso da IA para adaptação
+- Acesso aos materiais adaptados
+- Uso do chatbot
+
+---
+
+## Funcionalidades
+
+### Gestão de Alunos
+- Cadastro por matrícula
+- Upload de laudo médico
+- Associação de laudo ao aluno
+
+### Chatbot com IA
+- Interface conversacional
+- Suporte a Markdown
+- Histórico de conversas
+- Múltiplas sessões
+
+### Adaptação de Conteúdo
+A IA realiza:
+- Simplificação de linguagem
+- Reorganização do conteúdo
+- Inclusão de tópicos, exemplos e destaques
+
+### Gestão de Arquivos
+- Upload de PDFs
+- Armazenamento seguro
+- Listagem, visualização e download
+- URLs assinadas
+
+Estrutura de armazenamento:
+
+uploads-files/
+escola-{schoolId}/
+user-{userId}/
+arquivo.pdf
+
+
+### Sistema de Avaliação
+- Perfil de teste (Professor)
+- Limite de 5 adaptações gratuitas
+- Sem necessidade de vínculo com instituição
+
+### Sistema Multi-Escola
+- Login com seleção de instituição
+- Isolamento de dados por escola
+
+---
+
+## Fluxo de Automação
+
+1. Professor envia um PDF
+2. Seleciona aluno(s)
+3. Sistema analisa o laudo médico
+4. IA adapta o conteúdo automaticamente
+5. Retorno:
+   - PDF adaptado
+   - Plano didático estruturado
+
+---
+
+## Arquitetura
+
+### Frontend
+- React + Vite
+
+### Backend
+- Node.js (serverless)
+
+### Banco de Dados
+- PostgreSQL (Supabase)
+
+### Storage
+- Supabase Storage
+
+### IA
+- Modelos de linguagem (LLM)
+
+---
+
+## Diagrama do Ecossistema
+
 ```mermaid
 graph LR
-  subgraph Frontend
-    A[Browser / SPA<br/>index.html<br/>main.jsx<br/>src/] -->|API calls| B[API Routes (serverless)]
-  end
+  A[Usuário] --> B[Frontend]
+  B --> C[Backend]
+  C --> D[IA]
+  C --> E[Banco de Dados]
+  C --> F[Storage]
+  C --> G[Pagamentos]
+  D --> H[Conteúdo Adaptado]
+Memorial de Construção
 
-  subgraph Backend
-    B --> C[Auth & Business Logic<br/>api/_lib<br/>api/auth.js]
-    C --> D[Supabase (DB & Storage)]
-    C --> E[Payments / Webhooks]
-  end
 
-  subgraph Storage
-    D --> F[Files & Materials]
-  end
+##Problema
 
-  style Frontend fill:#f9f,stroke:#333,stroke-width:1px
-  style Backend fill:#fffbcc,stroke:#333,stroke-width:1px
-  style Storage fill:#ccf,stroke:#333,stroke-width:1px
-```
-```
+A adaptação de materiais para alunos neurodivergentes é manual, demorada e pouco escalável.
 
-Memorial de construção
+##Objetivo
 
-- Problema abordado: adaptar materiais educacionais para crianças neurodivergentes, automatizando conversões, armazenamento e distribuição; além de prover uma interface simples para editores e avaliadores.
-- Público-alvo: instrucionais e equipes educacionais que precisam de um fluxo de trabalho para preparar, adaptar e distribuir conteúdo.
-- Ferramentas escolhidas:
-	- Frontend: React + Vite (arquivos principais: `index.html`, `main.jsx`, `src/`)
-	- Backend: rotas serverless em `api/` integradas ao Supabase (DB e Storage)
-	- Integrações: Supabase (cliente e admin), provedores de pagamento (webhooks em `api/payments/`)
-	- Infra/Deploy: `vercel.json` (configurações de deploy)
-- Papel da IA: utilizada para auxiliar no processamento de conteúdo (ex.: sumarização, adaptação, sugestões de linguagem), automatizar transformação de material e acelerar criação de prompts. A IA também pode ter sido usada para gerar rascunhos de componentes e estratégias de teste.
-- Prompts e estratégias: mantenha um repositório separado ou `docs/prompts.md` (sugerido) com templates de prompts, exemplos de entrada/saída e controle de versões dos prompts usados em produção.
-- Limitações conhecidas:
-	- Maturidade limitada das rotas (revisar autenticação, validações e tratamento de erros em produção)
-	- Gestão de custos e segurança para integração com IA externa precisa ser avaliada
-	- Testes automatizados faltantes para várias rotas de integração
-- Melhorias futuras:
-	- Testes end-to-end para fluxos críticos
-	- Observability (logs estruturados, métricas)
-	- Painel administrativo para revisões manuais e métricas de uso
+Automatizar a adaptação de conteúdos educacionais utilizando inteligência artificial.
 
-Navegação rápida pelo repositório
+##Público-Alvo
+-Professores
+-Psicopedagogos
+-Instituições de ensino
+-Secretarias escolares
 
-- Ponto de entrada frontend: `index.html`, `main.jsx`
-- Shell / Páginas: `src/pages/App.jsx`, `src/pages/AppShell.jsx`, `src/pages/LoginPage.jsx`
-- Componentes UI: `src/components/` e `src/components/ui/`
-- Endpoints e automações: pasta `api/` (ex.: `api/files/signed-url.js`, `api/payments/webhook.js`)
-- Configurações e infra: `vercel.json`, `vite.config.js`, `package.json`
+##Ferramentas Utilizadas
+-React + Vite (Frontend)
+-Node.js (Backend)
+-Supabase (Banco e Storage)
+-Vercel (Deploy)
 
-Como rodar localmente (resumo rápido)
+##Papel da IA
+-Interpretação de PDFs
+-Análise de laudos
+-Adaptação automática de conteúdos
 
-1. Instale dependências e ajuste o arquivo .env:
+##Estratégias de Prompt
+-Personalização por perfil do aluno
+-Estruturação didática
+-Simplificação de linguagem
 
+##Limitações
+-Dependência da qualidade do PDF
+-Interpretação de laudos pode variar
+-Limitações de APIs de IA
+
+
+/frontend
+/images
+/api
+/src
+/docs
+/login
+/supabase
+/dist
+
+##Execução Local
 ````bash
+Variáveis de Ambiente
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_COHERE_API_KEY=
@@ -89,20 +196,15 @@ VITE_COHERE_MODEL=
 SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_URL=
 ````
-```bash
+
+##Instalação
+````bash
 npm install
-```
-
-2. Execute o servidor de desenvolvimento (Vite):
-
-```bash
+````
+##Execução
+````bash
 npm run dev
-```
-
-3. Para executar rotas serverless localmente, use a plataforma de deploy local (ex.: Vercel CLI) ou adapte rotas para um servidor Node de desenvolvimento.
-
-Contribuições
-
-Sinta-se à vontade para abrir issues descrevendo problemas, melhorias ou tarefas.
+````
 
 
+ **:contentReference[oaicite:0]{index=0}** ou o **:contentReference[oaicite:1]{index=1}**.

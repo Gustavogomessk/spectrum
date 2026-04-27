@@ -117,10 +117,30 @@ export function canAccessAlunos(usuario) {
 }
 
 export function canAccessSection(usuario, sectionId) {
-  // Admin e suas seções
+  // Admin e suas seções - mas também permite acesso a seções de licença se tiverem licença atribuída
   if (isAdminMaster(usuario) || isAdminInstituicao(usuario)) {
     const adminSections = new Set(["dashboard", "admin-global", "admin-notificacoes", "admin-instituicao", "admin-usuarios", "perfil"])
-    return adminSections.has(sectionId)
+    if (adminSections.has(sectionId)) return true
+    
+    // SubAdmins/Admin Instituição com licença podem acessar seções de usuário também
+    if (usuario?.tipoLicenca && usuario?.tipoLicenca !== "Sem Licença") {
+      // Permitir acesso às seções de educador/usuário baseado em licença
+      switch (sectionId) {
+        case "dashboard":
+          return canAccessDashboard(usuario)
+        case "adaptar":
+          return canAccessAdaptar(usuario)
+        case "chatbot":
+          return canAccessChatbot(usuario)
+        case "historico":
+          return canAccessHistorico(usuario)
+        case "alunos":
+          return canAccessAlunos(usuario)
+        default:
+          return false
+      }
+    }
+    return false
   }
 
   // Se usuário está sem licença, bloquear acesso a principais seções de uso

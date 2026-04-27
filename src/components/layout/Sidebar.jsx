@@ -12,6 +12,7 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
   const adminInstituicao = isAdminInstituicao(usuario)
   const notificacoesNaoLidas = (notificacoesSubadmin || []).filter((n) => !n.lida).length
   const licenca = usuario?.tipoLicenca 
+  const isSubadminComLicenca = adminInstituicao && licenca && licenca !== "Sem Licença"
 
   function Item({ id, icon, label, badge, disabled = false }) {
     const ativo = activeSection === id
@@ -47,9 +48,15 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
 
   return (
     <nav className={`sidebar ${aberta ? "aberta" : ""}`} id="sidebar" role="navigation" aria-label="Menu principal">
-      <div className="sidebar-logo" aria-label="Spectrum logo">
-        <img src={projectLogo} alt="Logo do Spectrum" className="sidebar-logo-image" />
-      </div>
+      
+        <img src={projectLogo} style={{
+  width: 250,
+  height: 100,
+  objectFit: "cover",
+  borderRadius: 12,
+  boxShadow: "none"
+}} alt="Logo do Spectrum" className="sidebar-logo-image" />
+    
 
       <div className="sidebar-nav">
         {educador ? (
@@ -89,6 +96,21 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
             <p className="nav-secao">Admin Instituição</p>
             <Item id="admin-instituicao" icon={<AppIcon icon={Building2} />} label="Gestão da Instituição" badge={notificacoesNaoLidas > 0 ? String(notificacoesNaoLidas) : null} />
             <Item id="admin-usuarios" icon={<AppIcon icon={Users} />} label="Gerenciar Usuários" />
+          </>
+        ) : null}
+
+        {isSubadminComLicenca ? (
+          <>
+            <p className="nav-secao">Suas Funções</p>
+            <Item id="dashboard" icon={<AppIcon icon={LayoutDashboard} />} label="Dashboard" />
+
+            <p className="nav-secao">Adaptação</p>
+            <Item id="adaptar" icon={<AppIcon icon={Gauge} />} label="Adaptar Material" badge={licenca === "PRO" ? "Novo" : null} />
+            <Item id="historico" icon={<AppIcon icon={FileText} />} label="Materiais" />
+
+            <p className="nav-secao">Gestão</p>
+            <Item id="alunos" icon={<AppIcon icon={Users} />} label="Alunos" />
+            <Item id="chatbot" icon={<AppIcon icon={MessageSquare} />} label="Chatbot IA" />
           </>
         ) : null}
       </div>
