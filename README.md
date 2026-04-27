@@ -138,14 +138,15 @@ graph LR
   C --> F[Storage]
   C --> G[Pagamentos]
   D --> H[Conteúdo Adaptado]
-Memorial de Construção
-````
+```
 
-##Problema
+## Memorial de Construção
+
+### Problema
 
 A adaptação de materiais para alunos neurodivergentes é manual, demorada e pouco escalável.
 
-##Objetivo
+### Objetivo
 
 Automatizar a adaptação de conteúdos educacionais utilizando inteligência artificial.
 
