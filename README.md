@@ -137,7 +137,7 @@ graph LR
   C --> E[Banco de Dados]
   C --> F[Storage]
   C --> G[Pagamentos]
-  D --> H[Conteúdo Adaptado]
+  D --> H[Conteúdo Adaptado] --> F
 ```
 
 ## Memorial de Construção
