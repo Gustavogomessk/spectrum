@@ -149,32 +149,32 @@ A adaptação de materiais para alunos neurodivergentes é manual, demorada e po
 
 Automatizar a adaptação de conteúdos educacionais utilizando inteligência artificial.
 
-##Público-Alvo
--Professores
--Psicopedagogos
--Instituições de ensino
--Secretarias escolares
+### Público-Alvo
+- Professores
+- Psicopedagogos
+- Instituições de ensino
+- Secretarias escolares
 
-##Ferramentas Utilizadas
--React + Vite (Frontend)
--Node.js (Backend)
--Supabase (Banco e Storage)
--Vercel (Deploy)
+### Ferramentas Utilizadas
+- React + Vite (Frontend)
+- Node.js (Backend)
+- Supabase (Banco e Storage)
+- Vercel (Deploy)
 
-##Papel da IA
--Interpretação de PDFs
--Análise de laudos
--Adaptação automática de conteúdos
+### Papel da IA
+- Interpretação de PDFs
+- Análise de laudos
+- Adaptação automática de conteúdos
 
-##Estratégias de Prompt
--Personalização por perfil do aluno
--Estruturação didática
--Simplificação de linguagem
+### Estratégias de Prompt
+- Personalização por perfil do aluno
+- Estruturação didática
+- Simplificação de linguagem
 
-##Limitações
--Dependência da qualidade do PDF
--Interpretação de laudos pode variar
--Limitações de APIs de IA
+### Limitações
+- Dependência da qualidade do PDF
+- Interpretação de laudos pode variar
+- Limitações de APIs de IA
 
 
 /frontend
