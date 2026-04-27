@@ -28,25 +28,23 @@ Diagrama do ecossistema
 
 ```mermaid
 flowchart LR
-	subgraph Frontend
-		A[Browser / SPA
-		\n+    `index.html`, `main.jsx`, `src/`] -->|API calls| B[API Routes (serverless)]
-	end
+  subgraph Frontend
+    A[Browser / SPA<br>index.html<br>main.jsx<br>src/] -->|API calls| B[API Routes (serverless)]
+  end
 
-	subgraph Backend
-		B --> C[Auth & Business Logic
-		\n+    `api/_lib`, `api/auth.js`]
-		C --> D[Supabase (DB & Storage)]
-		C --> E[Payment / Webhooks]
-	end
+  subgraph Backend
+    B --> C[Auth & Business Logic<br>api/_lib<br>api/auth.js]
+    C --> D[Supabase (DB & Storage)]
+    C --> E[Payments / Webhooks]
+  end
 
-	subgraph Storage
-		D --> F[Files & Materials]
-	end
+  subgraph Storage
+    D --> F[Files & Materials]
+  end
 
-	style Frontend fill:#f9f,stroke:#333,stroke-width:1px
-	style Backend fill:#fffbcc,stroke:#333,stroke-width:1px
-	style Storage fill:#ccf,stroke:#333,stroke-width:1px
+  style Frontend fill:#f9f,stroke:#333,stroke-width:1px
+  style Backend fill:#fffbcc,stroke:#333,stroke-width:1px
+  style Storage fill:#ccf,stroke:#333,stroke-width:1px
 ```
 
 Memorial de construção
