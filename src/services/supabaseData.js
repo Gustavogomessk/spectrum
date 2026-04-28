@@ -224,12 +224,9 @@ export async function updateAluno(userId, aluno, schoolId = null) {
     laudo_url: aluno.laudo_url || null,
   }
 
-  // Ensure schoolId is synchronized with schools table if it's a valid UUID
+  // Use schoolId directly - it's already synchronized by the caller (salvarAlunoApi)
   if (isValidUUID(schoolId)) {
-    const validSchoolId = await getSchoolIdFromInstitutionId(schoolId)
-    if (validSchoolId) {
-      updateData.school_id = validSchoolId
-    }
+    updateData.school_id = schoolId
   }
 
   const { data, error } = await supabase
@@ -316,14 +313,10 @@ export async function insertAluno(userId, aluno, schoolId = null) {
     return novo
   }
 
-  // Ensure schoolId is synchronized with schools table if it's a valid UUID
-  let validSchoolId = null
-  if (isValidUUID(schoolId)) {
-    validSchoolId = await getSchoolIdFromInstitutionId(schoolId)
-    console.log("[insertAluno] schoolId input:", schoolId, "→ validSchoolId:", validSchoolId)
-  } else {
-    console.log("[insertAluno] schoolId is not a valid UUID:", schoolId)
-  }
+  // Use schoolId directly - it's already synchronized by the caller (salvarAlunoApi)
+  // or null if not from an institution
+  const validSchoolId = isValidUUID(schoolId) ? schoolId : null
+  console.log("[insertAluno] Using schoolId:", validSchoolId)
 
   const { data, error } = await supabase
     .from("alunos")
@@ -381,14 +374,9 @@ export async function insertMaterial(userId, row, schoolId = null) {
     return novo
   }
 
-  // Convert institutionId to schoolId if needed (handles old schema mapping)
-  let resolvedSchoolId = schoolId
-  if (isValidUUID(schoolId)) {
-    resolvedSchoolId = await getSchoolIdFromInstitutionId(schoolId)
-  }
-
-  // Only save schoolId if it's a valid UUID
-  const validSchoolId = isValidUUID(resolvedSchoolId) ? resolvedSchoolId : null
+  // Use schoolId directly - it's already synchronized by the caller (salvarMaterialApi)
+  // or null if not from an institution
+  const validSchoolId = isValidUUID(schoolId) ? schoolId : null
 
   const { data, error } = await supabase
     .from("materiais")

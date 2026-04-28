@@ -677,7 +677,14 @@ export function SpectrumProvider({ children }) {
 
   const salvarMaterialApi = useCallback(
     async (row) => {
-      const created = await insertMaterial(userId, row, usuario?.schoolId || null)
+      // Sync schoolId with schools table (handles FK constraint)
+      let validSchoolId = usuario?.schoolId || null
+      if (validSchoolId) {
+        const syncedSchoolId = await getSchoolIdFromInstitutionId(validSchoolId)
+        // Use synced value if available, otherwise set to null to avoid FK violation
+        validSchoolId = syncedSchoolId || null
+      }
+      const created = await insertMaterial(userId, row, validSchoolId)
       await refresh()
       return created
     },
