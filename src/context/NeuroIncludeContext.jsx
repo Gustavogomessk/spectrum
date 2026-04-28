@@ -6,6 +6,7 @@ import {
   deleteMaterial as apiDeleteMaterial,
   fetchAlunos,
   fetchMateriais,
+  getSchoolIdFromInstitutionId,
   insertAluno,
   insertMaterial,
   patchAluno,
@@ -293,7 +294,7 @@ export function SpectrumProvider({ children }) {
         nome: meta.nome || s.user.email?.split("@")[0] || "Usuário",
         papel: meta.papel || "Educador(a)",
         perfilCodigo: perfilCodigoDeMetadata(meta),
-        schoolId: meta.schoolId || null,
+        schoolId: meta.schoolId || meta.escola || null,
         iniciais: iniciaisDe(meta.nome || s.user.email || "NI"),
       }
       setUsuario(restaurarUsuarioComLicenca(usuarioBase))
@@ -311,7 +312,7 @@ export function SpectrumProvider({ children }) {
         nome: meta.nome || session.user.email?.split("@")[0] || "Usuário",
         papel: meta.papel || "Educador(a)",
         perfilCodigo: perfilCodigoDeMetadata(meta),
-        schoolId: meta.schoolId || null,
+        schoolId: meta.schoolId || meta.escola || null,
         iniciais: iniciaisDe(meta.nome || session.user.email || "NI"),
       }
       setUsuario(restaurarUsuarioComLicenca(usuarioBase))
@@ -558,20 +559,30 @@ export function SpectrumProvider({ children }) {
 
   const salvarAlunoApi = useCallback(
     async (payload) => {
-      const schoolId = usuario?.schoolId || "trial"
-      console.log("[salvarAlunoApi] usuario.schoolId:", usuario?.schoolId, "→ passing:", schoolId)
+      // Sync schoolId with schools table (handles FK constraint)
+      let validSchoolId = usuario?.schoolId || null
+      if (validSchoolId) {
+        const syncedSchoolId = await getSchoolIdFromInstitutionId(validSchoolId)
+        // Use synced value if available, otherwise set to null to avoid FK violation
+        validSchoolId = syncedSchoolId || null
+      }
+      console.log("[salvarAlunoApi] Using schoolId:", validSchoolId)
+      
       if (payload.id) {
-        await updateAluno(userId, { ...payload, id: payload.id }, usuario?.schoolId || null)
+        // UPDATE existing aluno
+        await updateAluno(userId, { ...payload, id: payload.id }, validSchoolId)
         if (payload.laudoFile) {
           const { data: sess } = await supabase.auth.getSession()
           const token = sess?.session?.access_token
           if (!token) throw new Error("not_authenticated")
 
-          const storagePath = `escola-${schoolId}/user-${userId}/aluno-${payload.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
+          // Use schoolId in storage path
+          const storageFolder = validSchoolId || "trial"
+          const storagePath = `escola-${storageFolder}/user-${userId}/aluno-${payload.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
           
           // Upload directly to Supabase Storage (avoids Vercel 6MB limit)
           console.log("[salvarAlunoApi] Uploading file to storage:", storagePath)
-          const { error: uploadErr, data: uploadData } = await supabase.storage
+          const { error: uploadErr } = await supabase.storage
             .from("uploads-files")
             .upload(storagePath, payload.laudoFile, { upsert: true, contentType: "application/pdf" })
 
@@ -581,7 +592,7 @@ export function SpectrumProvider({ children }) {
           const { data: fileData, error: registerErr } = await supabase
             .from("files")
             .insert({
-              school_id: usuario?.schoolId || null,
+              school_id: validSchoolId,
               user_id: userId,
               filename: payload.laudoFile.name,
               storage_path: storagePath,
@@ -591,20 +602,25 @@ export function SpectrumProvider({ children }) {
 
           if (!registerErr && fileData) {
             await patchAluno(userId, payload.id, { laudo_url: storagePath })
+          } else if (registerErr) {
+            console.error("[salvarAlunoApi] Error registering file metadata:", registerErr)
           }
         }
       } else {
-        const created = await insertAluno(userId, payload, usuario?.schoolId || null)
+        // INSERT new aluno
+        const created = await insertAluno(userId, payload, validSchoolId)
         if (payload.laudoFile && created?.id) {
           const { data: sess } = await supabase.auth.getSession()
           const token = sess?.session?.access_token
           if (!token) throw new Error("not_authenticated")
 
-          const storagePath = `escola-${schoolId}/user-${userId}/aluno-${created.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
+          // Use schoolId in storage path
+          const storageFolder = validSchoolId || "trial"
+          const storagePath = `escola-${storageFolder}/user-${userId}/aluno-${created.id}-${sanitizeStorageSegment(payload.laudoFile.name)}`
           
           // Upload directly to Supabase Storage (avoids Vercel 6MB limit)
           console.log("[salvarAlunoApi] Uploading file to storage:", storagePath)
-          const { error: uploadErr, data: uploadData } = await supabase.storage
+          const { error: uploadErr } = await supabase.storage
             .from("uploads-files")
             .upload(storagePath, payload.laudoFile, { upsert: true, contentType: "application/pdf" })
 
@@ -614,7 +630,7 @@ export function SpectrumProvider({ children }) {
           const { data: fileData, error: registerErr } = await supabase
             .from("files")
             .insert({
-              school_id: usuario?.schoolId || null,
+              school_id: validSchoolId,
               user_id: userId,
               filename: payload.laudoFile.name,
               storage_path: storagePath,
@@ -624,6 +640,8 @@ export function SpectrumProvider({ children }) {
 
           if (!registerErr && fileData) {
             await patchAluno(userId, created.id, { laudo_url: storagePath })
+          } else if (registerErr) {
+            console.error("[salvarAlunoApi] Error registering file metadata:", registerErr)
           }
         }
       }

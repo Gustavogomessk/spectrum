@@ -8,7 +8,8 @@ function isValidUUID(uuid) {
 
 // Converts institution_id (from admin_institutions) to school_id (from schools table)
 // This handles the mapping between old and new schema
-async function getSchoolIdFromInstitutionId(institutionId) {
+// EXPORTED for use in components
+export async function getSchoolIdFromInstitutionId(institutionId) {
   if (!institutionId || !isValidUUID(institutionId) || !isSupabaseConfigured() || !supabase) {
     return null
   }
@@ -51,12 +52,12 @@ async function getSchoolIdFromInstitutionId(institutionId) {
       console.warn("[getSchoolIdFromInstitutionId] Sync endpoint failed:", syncErr)
     }
 
-    // Fallback: return institutionId itself (might work if they're the same)
-    console.log("[getSchoolIdFromInstitutionId] Returning input as fallback:", institutionId)
-    return institutionId
+    // If sync failed, return null (don't use invalid schoolId that would violate FK constraint)
+    console.log("[getSchoolIdFromInstitutionId] Sync failed, returning null to avoid FK violation")
+    return null
   } catch (err) {
     console.error("[getSchoolIdFromInstitutionId] Error:", err)
-    return institutionId
+    return null
   }
 }
 
@@ -223,11 +224,11 @@ export async function updateAluno(userId, aluno, schoolId = null) {
     laudo_url: aluno.laudo_url || null,
   }
 
-  // Convert institutionId to schoolId if needed (handles old schema mapping)
+  // Ensure schoolId is synchronized with schools table if it's a valid UUID
   if (isValidUUID(schoolId)) {
-    const resolvedSchoolId = await getSchoolIdFromInstitutionId(schoolId)
-    if (isValidUUID(resolvedSchoolId)) {
-      updateData.school_id = resolvedSchoolId
+    const validSchoolId = await getSchoolIdFromInstitutionId(schoolId)
+    if (validSchoolId) {
+      updateData.school_id = validSchoolId
     }
   }
 
@@ -315,15 +316,14 @@ export async function insertAluno(userId, aluno, schoolId = null) {
     return novo
   }
 
-  // Convert institutionId to schoolId if needed (handles old schema mapping)
-  let resolvedSchoolId = schoolId
+  // Ensure schoolId is synchronized with schools table if it's a valid UUID
+  let validSchoolId = null
   if (isValidUUID(schoolId)) {
-    resolvedSchoolId = await getSchoolIdFromInstitutionId(schoolId)
+    validSchoolId = await getSchoolIdFromInstitutionId(schoolId)
+    console.log("[insertAluno] schoolId input:", schoolId, "→ validSchoolId:", validSchoolId)
+  } else {
+    console.log("[insertAluno] schoolId is not a valid UUID:", schoolId)
   }
-
-  // Only save schoolId if it's a valid UUID
-  const validSchoolId = isValidUUID(resolvedSchoolId) ? resolvedSchoolId : null
-  console.log("[insertAluno] schoolId input:", schoolId, "→ resolved:", resolvedSchoolId, "→ validSchoolId:", validSchoolId)
 
   const { data, error } = await supabase
     .from("alunos")
