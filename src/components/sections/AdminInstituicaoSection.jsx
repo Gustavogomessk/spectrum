@@ -62,7 +62,7 @@ export default function AdminInstituicaoSection({ active }) {
   const usuariosComSubadmin = useMemo(() => {
     const subadminUser = usuario ? { ...usuario, papel: "subadmin" } : null
     const outrosUsuarios = usuarios || []
-    return subadminUser ? [subadminUser, ...outrosUsuarios] : outrosUsuarios
+    return subadminUser ? [ ...outrosUsuarios] : outrosUsuarios
   }, [usuario, usuarios])
   const pagamentoAtual = pagamentosSubadmin[0] || null
   const qrMock = `MOCK-PIX|subadmin:${usuario?.id || "anon"}|instituicao:${instituicaoId}|${new Date().toISOString().slice(0, 10)}`
@@ -225,7 +225,7 @@ export default function AdminInstituicaoSection({ active }) {
                     <td>
                       <select
                         className="campo"
-                        value={u.tipoLicenca || "Basic"}
+                        value={u.tipoLicenca}
                         onChange={async (e) => editarUsuario(u.id, { tipoLicenca: e.target.value })}
                       >
                         {USUARIO_LICENCAS.map((lic) => (
