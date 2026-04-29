@@ -384,6 +384,102 @@ export function SpectrumProvider({ children }) {
     
   }, [usuario?.perfilCodigo, usuario?.tipoLicenca, activeSection])
 
+  // Subscrição em tempo real para mudanças administrativas no usuário/instituição
+  const logout = useCallback(async () => {
+    if (isSupabaseConfigured() && supabase) {
+      await supabase.auth.signOut()
+    }
+    
+    // Limpar sessionStorage de tipoLicenca quando fazer logout
+    if (usuario?.id) {
+      sessionStorage.removeItem(`tipoLicenca_${usuario.id}`)
+    }
+    
+    toastSyncJaExibido.current = false
+    setUsuario(null)
+    setActiveSection("dashboard")
+  }, [usuario?.id])
+
+  useEffect(() => {
+    if (!usuario || !isSupabaseConfigured() || !supabase) return
+
+    let userSub = null
+    let instSub = null
+
+    // Ouvir mudanças na linha do usuário em admin_users usando channel (Supabase v2)
+    try {
+      userSub = supabase
+        .channel(`public:admin_users:id=eq.${usuario.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'admin_users', filter: `id=eq.${usuario.id}` },
+          (payload) => {
+            const novo = payload.new || {}
+            // Troca de plano
+            if (novo.license_type && novo.license_type !== usuario.tipoLicenca) {
+              const updatedUser = { ...usuario, tipoLicenca: novo.license_type }
+              sessionStorage.setItem(`tipoLicenca_${usuario.id}`, novo.license_type || '')
+              setUsuario(updatedUser)
+              // Recalcular seção padrão e recarregar dados relevantes
+              try {
+                setActiveSection(getDefaultSection(updatedUser))
+              } catch (e) {}
+              refresh()
+              refreshAdminData()
+              toast('Seu plano foi atualizado pelo administrador.', 'info')
+            }
+
+            // Bloqueio do usuário
+            if (novo.active === false) {
+              toast('Sua conta foi bloqueada pelo administrador. Você será desconectado.', 'erro')
+              try {
+                logout()
+              } catch (e) {
+                console.error('Erro ao forçar logout após bloqueio:', e)
+              }
+            }
+          },
+        )
+        .subscribe()
+
+      // Se o usuário pertence a uma instituição, ouvir mudanças na instituição (ex.: bloqueio)
+      if (usuario.schoolId) {
+        instSub = supabase
+          .channel(`public:admin_institutions:id=eq.${usuario.schoolId}`)
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'admin_institutions', filter: `id=eq.${usuario.schoolId}` },
+            (payload) => {
+              const novoInst = payload.new || {}
+              if (novoInst.active === false) {
+                toast('Sua instituição foi bloqueada pelo administrador. Você será desconectado.', 'erro')
+                try {
+                  logout()
+                } catch (e) {
+                  console.error('Erro ao forçar logout após bloqueio da instituição:', e)
+                }
+              }
+              // Atualizar dados administrativos visíveis e recarregar sessão
+              refreshAdminData()
+              refresh()
+            },
+          )
+          .subscribe()
+      }
+    } catch (err) {
+      console.warn('Erro ao criar canais realtime:', err)
+    }
+
+    return () => {
+      try {
+        if (userSub?.unsubscribe) userSub.unsubscribe()
+      } catch (e) {}
+      try {
+        if (instSub?.unsubscribe) instSub.unsubscribe()
+      } catch (e) {}
+    }
+  }, [usuario?.id, usuario?.schoolId, logout, refreshAdminData, toast])
+
   const loginDemo = useCallback(
     (email, senha, role) => {
       if (!email?.trim() || !senha) {
@@ -444,20 +540,6 @@ export function SpectrumProvider({ children }) {
     [toast],
   )
 
-  const logout = useCallback(async () => {
-    if (isSupabaseConfigured() && supabase) {
-      await supabase.auth.signOut()
-    }
-    
-    // Limpar sessionStorage de tipoLicenca quando fazer logout
-    if (usuario?.id) {
-      sessionStorage.removeItem(`tipoLicenca_${usuario.id}`)
-    }
-    
-    toastSyncJaExibido.current = false
-    setUsuario(null)
-    setActiveSection("dashboard")
-  }, [usuario?.id])
 
   const cadastroSupabase = useCallback(
     async ({ nome, email, senha, papel, escola, schoolId, licencas, tipoLicenca }) => {

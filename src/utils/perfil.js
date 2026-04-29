@@ -69,7 +69,7 @@ export function funcaoMetadataDePapelCadastro(papel) {
 /**
  * Validações de acesso por licença
  * Plano Secretaria: apenas Alunos (cadastro e laudos)
- * Plano Basic: Dashboard, Alunos, Histórico
+ * Plano Basic: Dashboard, Alunos, Histórico, Chatbot
  * Plano PRO: Todos os acessos (Dashboard, Adaptar, Histórico, Alunos, Chatbot)
  */
 
@@ -94,13 +94,12 @@ export function canAccessAdaptar(usuario) {
 }
 
 export function canAccessChatbot(usuario) {
-  // Chatbot: apenas PRO
+  // Chatbot: PRO e Basic
   if (usuario?.trial) return true
   if (isSecretaria(usuario)) return false
   const licenca = usuario?.tipoLicenca
-  if (usuario?.tipoLicenca === "Sem Licença") return false
-  // Allow trial users full access to Chatbot
-  return licenca === "PRO"
+  if (licenca === "Sem Licença") return false
+  return licenca === "PRO" || licenca === "Basic"
 }
 
 export function canAccessHistorico(usuario) {
