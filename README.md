@@ -28,21 +28,17 @@ A solução é composta por dois pilares principais:
 ## Perfis de Usuário
 
 ### Admin Global
-- Gerencia licenças (Basic, PRO, Secretaria, Sem licença)
+- Gerencia licenças (Basic, PRO, Sem licença)
 - Gestão de usuários
 - Gestão de boletos
 
 ### Administrador da Escola
 - Cadastro de usuários
-- Definição de papéis (Professor, Psicopedagogo, Secretaria)
+- Definição de papéis (Professor, Psicopedagogo)
 - Gerenciamento de permissões
 - Controle de licenças
 
-### Secretaria
-- Cadastro de alunos
-- Upload de laudos médicos (PDF)
-- Associação do laudo ao aluno
-- Sem acesso à IA
+
 
 ### Professor e Psicopedagogo
 - Upload de materiais didáticos
@@ -135,8 +131,8 @@ graph LR
   B --> C[Backend]
   C --> D[IA]
   C --> E[Banco de Dados]
-  C --> F[Storage]
-  C --> G[Pagamentos]
+  C --> F[Storage] --> E
+  C --> G[Pagamentos] --> E
   D --> H[Conteúdo Adaptado] --> F
 ```
 
@@ -154,13 +150,15 @@ Automatizar a adaptação de conteúdos educacionais utilizando inteligência ar
 - Professores
 - Psicopedagogos
 - Instituições de ensino
-- Secretarias escolares
 
 ### Ferramentas Utilizadas
 - React + Vite (Frontend)
 - Node.js (Backend)
 - Supabase (Banco e Storage)
 - Vercel (Deploy)
+- Cohere (Integração IA)
+- Copilot (Desenvolvimento)
+- Cursor - Claude (Desenvolvimento)
 
 ### Papel da IA
 - Interpretação de PDFs
