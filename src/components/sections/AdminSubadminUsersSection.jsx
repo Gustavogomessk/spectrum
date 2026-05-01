@@ -72,6 +72,15 @@ export default function AdminSubadminUsersSection({ active }) {
     if (String(novo.senha || "").length < 6) {
       return toast("A senha deve ter no mínimo 6 caracteres.", "erro")
     }
+    // Validação rápida no frontend: limite de usuários por instituição
+    // (a validação forte é server-side via /api/users/create)
+    const limite = Number(instituicao?.limiteUsuarios ?? 0)
+    if (!Number.isNaN(limite) && limite > 0) {
+      const ativos = (usuarios || []).filter((u) => u.ativo).length
+      if (ativos >= limite) {
+        return toast("Limite de usuários da instituição atingido. Aumente o limite para criar novos usuários.", "erro")
+      }
+    }
     try {
       await criarUsuarioInstituicao({ ...novo, instituicaoId })
       setNovo({ nome: "", email: "", senha: "", papel: "professor", licencas: 1, tipoLicenca: "Basic" })

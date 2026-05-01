@@ -650,16 +650,6 @@ export async function desabilitarUsuarioComInstituicao(usuarioId, instituicaoId 
       .eq("id", usuarioId)
     
     if (errorUser) throw errorUser
-    
-    // Se o usuário tem uma instituição, desabilitar todos os membros dessa instituição
-    if (instituicaoId) {
-      const { error: errorMembers } = await supabase
-        .from("admin_users")
-        .update({ active: false })
-        .eq("institution_id", instituicaoId)
-      
-      if (errorMembers) throw errorMembers
-    }
   } catch (error) {
     console.error("Erro ao desabilitar usuário com instituição:", error)
     throw error
@@ -677,16 +667,6 @@ export async function habilitarUsuarioComInstituicao(usuarioId, instituicaoId = 
       .eq("id", usuarioId)
     
     if (errorUser) throw errorUser
-    
-    // Se o usuário tem uma instituição, habilitar todos os membros dessa instituição
-    if (instituicaoId) {
-      const { error: errorMembers } = await supabase
-        .from("admin_users")
-        .update({ active: true })
-        .eq("institution_id", instituicaoId)
-      
-      if (errorMembers) throw errorMembers
-    }
   } catch (error) {
     console.error("Erro ao habilitar usuário com instituição:", error)
     throw error

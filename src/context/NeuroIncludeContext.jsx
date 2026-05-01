@@ -801,37 +801,50 @@ export function SpectrumProvider({ children }) {
           return false
         }
 
-        // Criar o usuário SEM trocar a sessão atual (cliente efêmero sem persistência)
-        const ephemeral = createEphemeralSupabaseClient()
-        if (!ephemeral) {
-          toast("Supabase não configurado. Verifique .env e reinicie o servidor.", "erro")
+        // Criar o usuário via API (service role) para não trocar a sessão atual
+        const { data: sess } = await supabase.auth.getSession()
+        const token = sess?.session?.access_token
+        if (!token) {
+          toast("Sessão inválida. Faça login novamente.", "erro")
           return false
         }
 
-        const { data: created, error: createError } = await ephemeral.auth.signUp({
-          email: String(payload.email || "").trim(),
-          password: senhaLimpa,
-          options: {
-            data: {
-              nome: payload.nome,
-              papel: "subadmin",
-              escola: payload.instituicaoId,
-              schoolId: payload.instituicaoId,
-              funcao: funcaoMetadataDePapelCadastro("subadmin"),
+        let newUserId = null
+        try {
+          const result = await apiFetch("/api/users/create", {
+            method: "POST",
+            token,
+            body: {
+              email: String(payload.email || "").trim(),
+              password: senhaLimpa,
+              schoolId: payload.instituicaoId || null,
+              user_metadata: {
+                nome: payload.nome,
+                papel: "subadmin",
+                escola: payload.instituicaoId,
+                schoolId: payload.instituicaoId,
+                funcao: funcaoMetadataDePapelCadastro("subadmin"),
+              },
             },
-          },
-        })
-
-        if (createError || !created?.user) {
-          toast("Erro ao criar SubAdmin: " + (createError?.message || "falha ao criar usuário"), "erro")
+          })
+          newUserId = result?.data?.userId || result?.userId
+        } catch (err) {
+          if (String(err?.message || "").includes("user_limit_reached")) {
+            toast("Limite de usuários da instituição atingido. Aumente o limite para criar novos usuários.", "erro")
+            return false
+          }
+          toast("Erro ao criar SubAdmin: " + (err?.message || "falha ao criar usuário"), "erro")
           return false
         }
 
-        const newUserId = created.user.id
+        if (!newUserId) {
+          toast("Erro ao criar SubAdmin: falha ao obter userId.", "erro")
+          return false
+        }
 
         // Registrar no admin_users para aparecer na gestão (sem trocar a sessão atual)
         try {
-          await supabase.from("admin_users").insert({
+          const { error: insertErr } = await supabase.from("admin_users").insert({
             id: newUserId,
             full_name: payload.nome,
             email: String(payload.email || "").trim(),
@@ -842,17 +855,16 @@ export function SpectrumProvider({ children }) {
             licenses: 0,
             license_type: "Sem Licença",
           })
+          if (insertErr) throw insertErr
         } catch (err) {
           console.error("Erro ao registrar SubAdmin em admin_users:", err)
+          toast("SubAdmin criado no Auth, mas falhou ao registrar no banco (admin_users). Verifique policies/RLS.", "erro")
+          return false
         }
 
         // Add user to school_members if institution
         if (payload.instituicaoId) {
           try {
-            const { data: sess } = await supabase.auth.getSession()
-            const token = sess?.session?.access_token
-            if (!token) throw new Error("not_authenticated")
-
             await apiFetch("/api/institutions/add-member", {
               method: "POST",
               token,
@@ -886,9 +898,84 @@ export function SpectrumProvider({ children }) {
     if (isSupabaseConfigured() && supabase) {
       const senhaLimpa = payload.senha || ""
       if (senhaLimpa.length < 6) {
-        toast("A senha deve ter no mínimo 6 caracteres (exigência do Supabase).", "erro")
-        return
+        throw new Error("A senha deve ter no mínimo 6 caracteres (exigência do Supabase).")
       }
+
+      // Criação de usuário institucional deve usar API server-side para:
+      // - não trocar a sessão atual do admin/subadmin
+      // - validar limite de usuários da instituição
+      if (payload.instituicaoId) {
+        const { data: sess } = await supabase.auth.getSession()
+        const token = sess?.session?.access_token
+        if (!token) {
+          throw new Error("Sessão inválida. Faça login novamente.")
+        }
+
+        let newUserId = null
+        try {
+          const result = await apiFetch("/api/users/create", {
+            method: "POST",
+            token,
+            body: {
+              email: String(payload.email || "").trim(),
+              password: senhaLimpa,
+              schoolId: payload.instituicaoId,
+              user_metadata: {
+                nome: payload.nome,
+                papel: payload.papel || "usuario",
+                escola: payload.instituicaoId,
+                schoolId: payload.instituicaoId,
+                funcao: funcaoMetadataDePapelCadastro(payload.papel || "usuario"),
+              },
+            },
+          })
+          newUserId = result?.data?.userId || result?.userId
+        } catch (err) {
+          if (String(err?.message || "").includes("user_limit_reached")) {
+            throw new Error("Limite de usuários da instituição atingido. Aumente o limite para criar novos usuários.")
+          }
+          throw new Error(err?.message || "Falha ao criar usuário.")
+        }
+
+        if (!newUserId) {
+          throw new Error("Falha ao criar usuário (não foi possível obter userId).")
+        }
+
+        // Registrar no admin_users
+        try {
+          const isTrial = !payload.instituicaoId
+          const defaultLicense = isTrial ? "PRO" : (payload.papel === "subadmin" ? "Sem Licença" : "Basic")
+          await supabase.from("admin_users").insert({
+            id: newUserId,
+            full_name: payload.nome,
+            email: String(payload.email || "").trim(),
+            role: payload.papel || "usuario",
+            institution_id: payload.instituicaoId,
+            account_type: "institution",
+            active: true,
+            licenses: Number(payload.licencas || (payload.papel === "subadmin" ? 0 : 1)),
+            license_type: payload.tipoLicenca || defaultLicense,
+          }).select().single()
+        } catch (err) {
+          console.error("Erro ao registrar usuário em admin_users:", err)
+        }
+
+        // Add to school_members
+        try {
+          await apiFetch("/api/institutions/add-member", {
+            method: "POST",
+            token,
+            body: { userId: newUserId, schoolId: payload.instituicaoId, role: "member" },
+          })
+        } catch (err) {
+          console.error("[criarUsuarioInstituicao] Erro ao adicionar usuário aos membros:", err)
+        }
+
+        await refreshAdminData()
+        return { ok: true, userId: newUserId }
+      }
+
+      // Fluxo padrão (trial / auto-cadastro)
       const res = await cadastroSupabase({
         nome: payload.nome,
         email: payload.email,
@@ -899,14 +986,17 @@ export function SpectrumProvider({ children }) {
         licencas: payload.licencas,
         tipoLicenca: payload.tipoLicenca,
       })
-      if (!res?.ok) return
+      if (!res?.ok) {
+        throw new Error("Falha ao criar usuário.")
+      }
       await refreshAdminData()
-      return
+      return { ok: true }
     }
 
     const passwordHash = payload.senha ? await hash(payload.senha, 10) : null
     await createUsuarioInstituicao({ ...payload, passwordHash })
     await refreshAdminData()
+    return { ok: true }
   }, [cadastroSupabase, refreshAdminData, toast])
 
   const atualizarLicencasUsuario = useCallback(async (usuarioId, licencas) => {

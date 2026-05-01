@@ -22,8 +22,6 @@ export default function AdminGlobalSection({ active, activeSection }) {
     habilitarInstituicaoComMembros,
     desabilitarUsuario,
     habilitarUsuario,
-    desabilitarUsuarioComInstituicao,
-    habilitarUsuarioComInstituicao,
     criarBoleto,
     deletarBoleto,
     deletarUsuario,
@@ -784,11 +782,11 @@ export default function AdminGlobalSection({ active, activeSection }) {
                               className={`btn ${u.ativo ? "btn-perigo" : "btn-secundario"} btn-sm`}
                               onClick={async () => {
                                 if (u.ativo) {
-                                  await desabilitarUsuarioComInstituicao(u.id, u.instituicaoId)
-                                  toast("Usuário e membros da instituição foram bloqueados.", "sucesso")
+                                  await desabilitarUsuario(u.id)
+                                  toast("Usuário bloqueado com sucesso.", "sucesso")
                                 } else {
-                                  await habilitarUsuarioComInstituicao(u.id, u.instituicaoId)
-                                  toast("Usuário e membros da instituição foram desbloqueados.", "sucesso")
+                                  await habilitarUsuario(u.id)
+                                  toast("Usuário desbloqueado com sucesso.", "sucesso")
                                 }
                               }}
                             >
