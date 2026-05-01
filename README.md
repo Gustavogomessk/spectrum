@@ -185,7 +185,7 @@ Automatizar a adaptação de conteúdos educacionais utilizando inteligência ar
 /supabase
 /dist
 
-##Execução Local
+## Execução Local
 ````bash
 Variáveis de Ambiente
 VITE_SUPABASE_URL=
@@ -196,11 +196,11 @@ SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_URL=
 ````
 
-##Instalação
+## Instalação
 ````bash
 npm install
 ````
-##Execução
+## Execução
 ````bash
 npm run dev
 ````
