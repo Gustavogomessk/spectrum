@@ -156,9 +156,9 @@ Automatizar a adaptação de conteúdos educacionais utilizando inteligência ar
 - Node.js (Backend)
 - Supabase (Banco e Storage)
 - Vercel (Deploy)
-- Cohere (Integração IA)
-- Copilot (Desenvolvimento)
-- Cursor - Claude (Desenvolvimento)
+- Cohere (Integração IA) - command-a-03-2025
+- Copilot (Desenvolvimento) - ChatGPT 4.5 mini
+- Cursor - Claude (Desenvolvimento) 3.5 sonnet
 
 ### Papel da IA
 - Interpretação de PDFs
