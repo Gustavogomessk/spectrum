@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "./supabaseClient"
+import { isValidUUID } from "./supabaseData"
 
 const DEFAULT_DATA = {
   instituicoes: [],
@@ -326,6 +327,13 @@ export async function listarPagamentosSubadmin(subadminUserId) {
 
 export async function listarPagamentosPorInstituicao(instituicaoId) {
   if (!supabase || !instituicaoId) return []
+  
+  // Guard: only query if instituicaoId is valid UUID
+  if (!isValidUUID(instituicaoId)) {
+    console.warn(`[listarPagamentosPorInstituicao] Invalid instituicaoId (not UUID): ${instituicaoId}`)
+    return []
+  }
+  
   const { data, error } = await supabase
     .from("admin_payments")
     .select("*")
@@ -562,6 +570,13 @@ export async function registrarUsoIa({ userId, model, tokensUsados, promptTokens
 
 export async function listarNotificacoesSubadmin({ userId, instituicaoId }) {
   if (!supabase || !userId) return []
+  
+  // Guard: only query if instituicaoId is valid UUID or null
+  if (instituicaoId && !isValidUUID(instituicaoId)) {
+    console.warn(`[listarNotificacoesSubadmin] Invalid instituicaoId (not UUID): ${instituicaoId}`)
+    return []
+  }
+  
   const { data: notifications, error: errN } = await supabase
     .from("admin_notifications")
     .select("*")

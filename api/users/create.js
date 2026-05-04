@@ -63,11 +63,38 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: error?.message || "create_user_failed" })
     }
 
+    const newUserId = data.user.id
+
+    // If schoolId provided, add user to school_members automatically
+    if (schoolId) {
+      try {
+        const { error: memberErr } = await supabaseAdmin
+          .from("school_members")
+          .insert({
+            school_id: schoolId,
+            user_id: newUserId,
+            role: "member",
+          })
+          .select()
+          .single()
+
+        if (memberErr && !memberErr.message?.includes("duplicate")) {
+          console.error("[CREATE USER] Warning: Failed to add user to school_members:", memberErr)
+          // Don't fail the whole request - user was created successfully in auth
+        } else if (!memberErr) {
+          console.log(`[CREATE USER] User ${newUserId} added to school_members for school ${schoolId}`)
+        }
+      } catch (err) {
+        console.error("[CREATE USER] Unexpected error adding to school_members:", err)
+        // Continue - user was created successfully
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Usuário criado com sucesso.",
       data: {
-        userId: data.user.id,
+        userId: newUserId,
         email: data.user.email,
       },
     })

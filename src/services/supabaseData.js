@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from "./supabaseClient"
 
-function isValidUUID(uuid) {
+export function isValidUUID(uuid) {
   if (!uuid) return false
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   return uuidRegex.test(String(uuid))
@@ -130,14 +130,21 @@ export async function fetchAlunos(userId, schoolId = null) {
     return DEMO_ALUNOS
   }
 
-  // Fetch all alunos accessible by RLS policy
-  // The policy allows: (user owns it) OR (user is member of school)
+  // RLS policy handles filtering:
+  // - If user owns aluno (user_id = auth.uid()): always visible
+  // - If aluno.school_id is set AND user is member of school: visible
+  // Just fetch all and let RLS filter
+  console.log(`[fetchAlunos] Fetching alunos for user ${userId}, schoolId=${schoolId}`)
+  
   const { data, error } = await supabase
     .from("alunos")
     .select("*")
     .order("created_at", { ascending: false })
 
   if (error) throw error
+  
+  console.log(`[fetchAlunos] Retrieved ${(data || []).length} alunos`)
+  
   return (data || []).map((row) => ({
     id: row.id,
     matricula: row.matricula || "",
@@ -159,8 +166,12 @@ export async function fetchMateriais(userId, schoolId = null) {
     return DEMO_MATERIAIS
   }
 
-  // Fetch all materials accessible by RLS policy
-  // The policy allows: (user owns it) OR (user is member of school)
+  // RLS policy handles filtering:
+  // - If user owns material (user_id = auth.uid()): always visible
+  // - If material.school_id is set AND user is member of school: visible
+  // Just fetch all and let RLS filter
+  console.log(`[fetchMateriais] Fetching materiais for user ${userId}, schoolId=${schoolId}`)
+
   const { data: mats, error: errMats } = await supabase
     .from("materiais")
     .select("*")
@@ -177,6 +188,8 @@ export async function fetchMateriais(userId, schoolId = null) {
   if (errAlu) throw errAlu
 
   const porId = new Map((aluRows || []).map((a) => [a.id, a]))
+
+  console.log(`[fetchMateriais] Retrieved ${(mats || []).length} materiais`)
 
   return (mats || []).map((row) => {
     const alunoRow = row.aluno_id ? porId.get(row.aluno_id) : null

@@ -77,6 +77,12 @@ function iniciaisDe(nome) {
     .toUpperCase()
 }
 
+function isValidUUID(value) {
+  if (!value || typeof value !== 'string') return false
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(value)
+}
+
 export function SpectrumProvider({ children }) {
   const [usuario, setUsuario] = useState(null)
   const [perfilRole, setPerfilRole] = useState("professor")
@@ -294,7 +300,7 @@ export function SpectrumProvider({ children }) {
         nome: meta.nome || s.user.email?.split("@")[0] || "Usuário",
         papel: meta.papel || "Educador(a)",
         perfilCodigo: perfilCodigoDeMetadata(meta),
-        schoolId: meta.schoolId || meta.escola || null,
+        schoolId: isValidUUID(meta.schoolId) ? meta.schoolId : (isValidUUID(meta.escola) ? meta.escola : null),
         iniciais: iniciaisDe(meta.nome || s.user.email || "NI"),
       }
       setUsuario(restaurarUsuarioComLicenca(usuarioBase))
@@ -312,7 +318,7 @@ export function SpectrumProvider({ children }) {
         nome: meta.nome || session.user.email?.split("@")[0] || "Usuário",
         papel: meta.papel || "Educador(a)",
         perfilCodigo: perfilCodigoDeMetadata(meta),
-        schoolId: meta.schoolId || meta.escola || null,
+        schoolId: isValidUUID(meta.schoolId) ? meta.schoolId : (isValidUUID(meta.escola) ? meta.escola : null),
         iniciais: iniciaisDe(meta.nome || session.user.email || "NI"),
       }
       setUsuario(restaurarUsuarioComLicenca(usuarioBase))
