@@ -12,6 +12,7 @@ import UploadZone from "../upload/UploadZone"
 import { sanitizeStorageSegment } from "../../services/files"
 import AppIcon from "../ui/AppIcon"
 import { Clipboard, Download, FileText, Sparkles, Upload, User } from "lucide-react"
+import { canAccessFeature } from "../../utils/perfil"
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
@@ -190,6 +191,11 @@ export default function AdaptarSection({ active }) {
   }
 
   async function iniciarAdaptacao() {
+    const access = canAccessFeature(usuario, "adaptar")
+    if (!access?.allowed) {
+      toast(access?.reason || "Seu plano atual não permite acessar esta funcionalidade. Faça upgrade para liberar o acesso.", "info")
+      return
+    }
     if (!arquivo) {
       toast("Selecione um PDF antes de continuar.", "erro")
       return

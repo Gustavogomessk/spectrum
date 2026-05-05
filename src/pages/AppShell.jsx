@@ -12,7 +12,7 @@ import PerfilSection from "../components/sections/PerfilSection"
 import AdminGlobalSection from "../components/sections/AdminGlobalSection"
 import AdminInstituicaoSection from "../components/sections/AdminInstituicaoSection"
 import AdminSubadminUsersSection from "../components/sections/AdminSubadminUsersSection"
-import { isAdminInstituicao, isEducador, canAccessSection, getDefaultSection, isSecretaria } from "../utils/perfil"
+import { isAdminInstituicao, isEducador, canAccessSection, getDefaultSection, isSecretaria, canAccessFeature } from "../utils/perfil"
 import AppIcon from "../components/ui/AppIcon"
 import { AlertCircle, Sparkles } from "lucide-react"
 import PlanosPopup from "../components/modals/PlanosPopup"
@@ -41,6 +41,7 @@ export default function AppShell() {
     notificacoesSubadmin,
     planosPopup,
     fecharPlanosPopup,
+    toast,
   } = useSpectrum()
   const podeAdaptar = isEducador(usuario)
   const isSubadmin = isAdminInstituicao(usuario)
@@ -100,7 +101,19 @@ export default function AppShell() {
             menuAberto={sidebarOpen}
           >
             {podeAdaptar ? (
-              <button type="button" className="btn btn-primario btn-sm" onClick={() => ir("adaptar")} aria-label="Adaptar novo material">
+              <button
+                type="button"
+                className="btn btn-primario btn-sm"
+                onClick={() => {
+                  const pode = canAccessSection(usuario, "adaptar")
+                  if (pode) {
+                    ir("adaptar")
+                    return
+                  }
+                  toast(canAccessFeature(usuario, "adaptar")?.reason || "Seu plano atual não permite acessar esta funcionalidade.", "info")
+                }}
+                aria-label="Adaptar novo material"
+              >
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
                   <AppIcon icon={Sparkles} size={16} />
                   Novo Material

@@ -1,11 +1,11 @@
 import { useSpectrum } from "../../context/SpectrumContext"
-import { isAdminInstituicao, isAdminMaster, isEducador, isSecretaria, canAccessSection } from "../../utils/perfil"
+import { isAdminInstituicao, isAdminMaster, isEducador, isSecretaria, canAccessSection, canAccessFeature } from "../../utils/perfil"
 import AppIcon from "../ui/AppIcon"
 import { Bell, Building2, FileText, Gauge, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, Lock } from "lucide-react"
 import projectLogo from "../../../Images/A_Logo.png"
 
 export default function Sidebar({ aberta, onNavigate, onPerfil }) {
-  const { usuario, activeSection, notificacoesSubadmin } = useSpectrum()
+  const { usuario, activeSection, notificacoesSubadmin, toast } = useSpectrum()
   const secretaria = isSecretaria(usuario)
   const educador = isEducador(usuario)
   const adminMaster = isAdminMaster(usuario)
@@ -17,16 +17,26 @@ export default function Sidebar({ aberta, onNavigate, onPerfil }) {
   function Item({ id, icon, label, badge, disabled = false }) {
     const ativo = activeSection === id
     const podeAcessar = canAccessSection(usuario, id)
+    const featureKey = id === "adaptar" ? "adaptar" : id === "chatbot" ? "chatbot" : id === "historico" ? "historico" : id === "alunos" ? "alunos" : id === "dashboard" ? "dashboard" : null
     
     return (
       <button
         type="button"
         className={`nav-item ${ativo ? "ativo" : ""} ${!podeAcessar ? "desabilitado" : ""}`}
         aria-current={ativo ? "page" : undefined}
-        onClick={() => podeAcessar && onNavigate(id)}
+        onClick={() => {
+          if (podeAcessar) {
+            onNavigate(id)
+            return
+          }
+          // Mensagem amigável (licença-first) ao tentar acessar feature bloqueada
+          const msg =
+            featureKey ? canAccessFeature(usuario, featureKey)?.reason : "Seu plano atual não permite acessar esta funcionalidade."
+          toast(msg, "info")
+        }}
         aria-label={label}
-        disabled={!podeAcessar}
-        title={!podeAcessar ? `Disponível no plano ${id === "adaptar" ? "PRO" : id === "chatbot" ? "PRO" : ""}` : ""}
+        aria-disabled={!podeAcessar}
+        title={!podeAcessar ? "Funcionalidade indisponível no plano atual" : ""}
       >
         <span className="nav-icon" aria-hidden="true">
           {icon}

@@ -82,20 +82,19 @@ export function canAccessDashboard(usuario) {
 }
 
 export function canAccessAdaptar(usuario) {
-  // Adaptar Material: apenas PRO
-  if (usuario?.trial) return true
+  // Regra de negócio: licença vem antes do perfil.
+  // Adaptar Material: apenas PRO (Basic não pode).
   const licenca = usuario?.tipoLicenca
+  if (!licenca) return false
+  if (licenca === "Sem Licença") return false
+  if (licenca !== "PRO") return false
+  // Perfis que nunca podem adaptar, mesmo com PRO
   if (isSecretaria(usuario)) return false
-  if (usuario?.tipoLicenca === "Sem Licença") return false
-  // Allow trial users full access to Adaptar
-  
-  
-  return licenca === "PRO"
+  return true
 }
 
 export function canAccessChatbot(usuario) {
   // Chatbot: PRO e Basic
-  if (usuario?.trial) return true
   if (isSecretaria(usuario)) return false
   const licenca = usuario?.tipoLicenca
   if (licenca === "Sem Licença") return false
@@ -164,6 +163,53 @@ export function canAccessSection(usuario, sectionId) {
       return true
     default:
       return false
+  }
+}
+
+/**
+ * Helper centralizado para features restritas por plano.
+ * Retorna (allowed, reason) para UI exibir mensagem amigável.
+ */
+export function canAccessFeature(usuario, feature) {
+  const licenca = usuario?.tipoLicenca
+  if (!licenca) {
+    return { allowed: false, reason: "Carregando informações do plano. Tente novamente em instantes." }
+  }
+  if (licenca === "Sem Licença") {
+    return { allowed: false, reason: "Sua conta está sem licença ativa. Entre em contato com o administrador para liberar o acesso." }
+  }
+
+  switch (feature) {
+    case "adaptar": {
+      if (licenca !== "PRO") {
+        return {
+          allowed: false,
+          reason: "Seu plano atual não permite acessar esta funcionalidade. Faça upgrade para liberar o acesso.",
+        }
+      }
+      if (isSecretaria(usuario)) {
+        return { allowed: false, reason: "Seu perfil não tem permissão para acessar esta funcionalidade." }
+      }
+      return { allowed: true }
+    }
+    case "chatbot": {
+      if (isSecretaria(usuario)) return { allowed: false, reason: "Seu perfil não tem permissão para acessar esta funcionalidade." }
+      if (licenca === "PRO" || licenca === "Basic") return { allowed: true }
+      return { allowed: false, reason: "Seu plano atual não permite acessar esta funcionalidade." }
+    }
+    case "historico": {
+      if (isSecretaria(usuario)) return { allowed: false, reason: "Seu perfil não tem permissão para acessar esta funcionalidade." }
+      return { allowed: true }
+    }
+    case "alunos": {
+      return { allowed: true }
+    }
+    case "dashboard": {
+      if (isSecretaria(usuario)) return { allowed: false, reason: "Seu perfil não tem permissão para acessar esta funcionalidade." }
+      return { allowed: true }
+    }
+    default:
+      return { allowed: false, reason: "Funcionalidade indisponível para seu plano." }
   }
 }
 

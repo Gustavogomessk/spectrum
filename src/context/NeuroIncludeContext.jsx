@@ -50,7 +50,7 @@ import {
 } from "../services/adminData"
 import { mensagemErroSupabaseAuth } from "../utils/authErrors"
 import { isErroRelacionamentoPostgrest, isErroTabelaAusente, resumoErroSupabase } from "../utils/supabaseErrors"
-import { funcaoMetadataDePapelCadastro, isAdmin, PERFIL, SECOES_SO_EDUCADOR, perfilCodigoDeMetadata } from "../utils/perfil"
+import { canAccessFeature, funcaoMetadataDePapelCadastro, isAdmin, PERFIL, SECOES_SO_EDUCADOR, perfilCodigoDeMetadata } from "../utils/perfil"
 
 const SpectrumContext = createContext(null)
 
@@ -116,6 +116,25 @@ export function SpectrumProvider({ children }) {
 
   const trialLimites = { adaptacoes: 5, chatPerguntas: 5 }
   const isTrialAtivo = Boolean(usuario && !usuario.schoolId && !isAdmin(usuario))
+
+  const buildUsuarioFromAuthUser = useCallback((authUser) => {
+    if (!authUser) return null
+    const meta = authUser.user_metadata || {}
+    const perfilCodigo = perfilCodigoDeMetadata(meta)
+    const schoolId = isValidUUID(meta.schoolId) ? meta.schoolId : (isValidUUID(meta.escola) ? meta.escola : null)
+    const usuarioBase = {
+      id: authUser.id,
+      email: authUser.email,
+      nome: meta.nome || authUser.email?.split("@")[0] || "Usuário",
+      papel: meta.papel || "Educador(a)",
+      perfilCodigo,
+      schoolId,
+      iniciais: iniciaisDe(meta.nome || authUser.email || "NI"),
+      // Trial real = sem instituição e não-admin
+      trial: Boolean(!schoolId && !isAdmin({ perfilCodigo })),
+    }
+    return usuarioBase
+  }, [])
 
   useEffect(() => {
     if (!usuario) return
@@ -292,17 +311,8 @@ export function SpectrumProvider({ children }) {
     supabase.auth.getSession().then(({ data }) => {
       const s = data.session
       if (!s?.user) return
-      const meta = s.user.user_metadata || {}
-      console.log("Metadata do usuário logado:", meta)
-      const usuarioBase = {
-        id: s.user.id,
-        email: s.user.email,
-        nome: meta.nome || s.user.email?.split("@")[0] || "Usuário",
-        papel: meta.papel || "Educador(a)",
-        perfilCodigo: perfilCodigoDeMetadata(meta),
-        schoolId: isValidUUID(meta.schoolId) ? meta.schoolId : (isValidUUID(meta.escola) ? meta.escola : null),
-        iniciais: iniciaisDe(meta.nome || s.user.email || "NI"),
-      }
+      const usuarioBase = buildUsuarioFromAuthUser(s.user)
+      if (!usuarioBase) return
       setUsuario(restaurarUsuarioComLicenca(usuarioBase))
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -311,20 +321,12 @@ export function SpectrumProvider({ children }) {
         return
       }
       
-      const meta = session.user.user_metadata || {}
-      const usuarioBase = {
-        id: session.user.id,
-        email: session.user.email,
-        nome: meta.nome || session.user.email?.split("@")[0] || "Usuário",
-        papel: meta.papel || "Educador(a)",
-        perfilCodigo: perfilCodigoDeMetadata(meta),
-        schoolId: isValidUUID(meta.schoolId) ? meta.schoolId : (isValidUUID(meta.escola) ? meta.escola : null),
-        iniciais: iniciaisDe(meta.nome || session.user.email || "NI"),
-      }
+      const usuarioBase = buildUsuarioFromAuthUser(session.user)
+      if (!usuarioBase) return
       setUsuario(restaurarUsuarioComLicenca(usuarioBase))
     })
     return () => sub.subscription.unsubscribe()
-  }, [])
+  }, [buildUsuarioFromAuthUser])
 
   useEffect(() => {
     if (!usuario || !isSupabaseConfigured() || !supabase) return
@@ -353,13 +355,26 @@ export function SpectrumProvider({ children }) {
             tipoLicenca: data.license_type,
             papel: data.role || prev.papel,
           }))
+          return true
         }
+        return false
       } catch (err) {
         console.log("Info: Não foi possível carregar licença (tabela admin_users pode não existir)", err.message)
+        return false
       }
     }
     
-    carregarDadosUsuario()
+    ;(async () => {
+      // Após signup, pode existir uma pequena janela em que o insert em admin_users
+      // ainda não está visível; tentamos algumas vezes antes de desistir.
+      const delays = [0, 350, 900]
+      for (const d of delays) {
+        if (!ativo) return
+        if (d) await new Promise((r) => setTimeout(r, d))
+        const ok = await carregarDadosUsuario()
+        if (ok) return
+      }
+    })()
     
     return () => {
       ativo = false
@@ -586,6 +601,7 @@ export function SpectrumProvider({ children }) {
           try {
           const isTrial = !schoolId
           const defaultLicense = isTrial ? "PRO" : (papel === "subadmin" ? "Sem Licença" : "Basic")
+          const resolvedLicense = tipoLicenca || defaultLicense
           await supabase.from("admin_users").insert({
             id: data.user.id,
             full_name: nome,
@@ -595,8 +611,16 @@ export function SpectrumProvider({ children }) {
             account_type: schoolId ? "institution" : "trial",
             active: true,
             licenses: Number(licencas || (papel === "subadmin" ? 0 : 1)),
-            license_type: tipoLicenca || defaultLicense,
+            license_type: resolvedLicense,
           }).select().single()
+
+          // Garantir desbloqueio imediato da UI (não depender do refetch).
+          sessionStorage.setItem(`tipoLicenca_${data.user.id}`, resolvedLicense || "")
+          setUsuario((prev) => {
+            const base = prev?.id === data.user.id ? prev : buildUsuarioFromAuthUser(data.user)
+            if (!base) return prev
+            return { ...base, tipoLicenca: resolvedLicense, trial: isTrial }
+          })
         } catch (err) {
           console.error("Erro ao registrar usuário em admin_users:", err)
           // Continuar mesmo se falhar, pois o usuário já foi criado em auth
@@ -642,7 +666,7 @@ export function SpectrumProvider({ children }) {
       toast("Cadastro enviado. Tente fazer login em instantes.", "info")
       return { ok: true, session: false, email: email.trim() }
     },
-    [toast],
+    [toast, buildUsuarioFromAuthUser],
   )
 
   const salvarAlunoApi = useCallback(
@@ -765,6 +789,10 @@ export function SpectrumProvider({ children }) {
 
   const salvarMaterialApi = useCallback(
     async (row) => {
+      const access = canAccessFeature(usuario, "adaptar")
+      if (!access?.allowed) {
+        throw new Error(access?.reason || "Seu plano atual não permite acessar esta funcionalidade. Faça upgrade para liberar o acesso.")
+      }
       // Sync schoolId with schools table (handles FK constraint)
       let validSchoolId = usuario?.schoolId || null
       if (validSchoolId) {
@@ -776,7 +804,7 @@ export function SpectrumProvider({ children }) {
       await refresh()
       return created
     },
-    [userId, refresh, usuario?.schoolId],
+    [userId, refresh, usuario],
   )
 
   const removerMaterialApi = useCallback(
